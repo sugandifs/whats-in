@@ -1,5 +1,3 @@
-// services/types.ts
-
 export interface User {
   _id: string;
   firebaseUid: string;
@@ -69,4 +67,76 @@ export interface ApiResponse<T> {
 export interface AuthTokenResponse {
   token: string;
   user: User;
+}
+
+// Add these to your existing types.ts file
+
+export interface PantryItem {
+  _id: string;
+  name: string;
+  category: "fresh" | "dairy" | "meat" | "pantry" | "frozen";
+  quantity: number;
+  unit:
+    | "piece"
+    | "lb"
+    | "kg"
+    | "oz"
+    | "g"
+    | "cup"
+    | "tbsp"
+    | "tsp"
+    | "bottle"
+    | "package";
+  expirationDate: Date;
+  purchaseDate: Date;
+  location: "fridge" | "freezer" | "pantry" | "counter";
+  emoji: string;
+  notes?: string;
+  barcode?: string;
+  userId: string;
+  createdAt: Date;
+  updatedAt: Date;
+  // Virtual fields
+  daysUntilExpiration?: number;
+  expirationStatus?: {
+    status: string;
+    color: string;
+    text: string;
+  };
+}
+
+export interface CreatePantryItemData {
+  name: string;
+  category: "fresh" | "dairy" | "meat" | "pantry" | "frozen";
+  quantity: number;
+  unit:
+    | "piece"
+    | "lb"
+    | "kg"
+    | "oz"
+    | "g"
+    | "cup"
+    | "tbsp"
+    | "tsp"
+    | "bottle"
+    | "package";
+  expirationDate: Date;
+  purchaseDate?: Date;
+  location: "fridge" | "freezer" | "pantry" | "counter";
+  emoji?: string;
+  notes?: string;
+  barcode?: string;
+}
+
+export interface PantryStats {
+  totalItems: number;
+  expiringSoon: number;
+  expired: number;
+  categories: {
+    fresh: number;
+    dairy: number;
+    meat: number;
+    pantry: number;
+    frozen: number;
+  };
 }

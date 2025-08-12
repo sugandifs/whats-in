@@ -255,34 +255,6 @@ export default function MealPrepHome() {
         },
       ];
       setPantryItems(mockPantryItems);
-
-      // Calculate quick stats
-      const stats: QuickStat[] = [
-        {
-          label: "Recipes Saved",
-          value: recipes.length,
-          icon: "book" as IoniconsName,
-        },
-        {
-          label: "Items in Pantry",
-          value: mockPantryItems.length,
-          icon: "archive" as IoniconsName,
-        },
-        {
-          label: "Avg Rating",
-          value:
-            recipes.length > 0
-              ? (
-                  recipes.reduce(
-                    (sum, recipe) => sum + recipe.rating,
-                    0
-                  ) / recipes.length
-                ).toFixed(1)
-              : "0.0",
-          icon: "star" as IoniconsName,
-        },
-      ];
-      setQuickStats(stats);
     } catch (error) {
       console.error("Failed to load data:", error);
       Alert.alert("Error", "Failed to load data. Please try again.");
@@ -719,36 +691,6 @@ export default function MealPrepHome() {
                   Plan Week
                 </ThemedText>
               </TouchableOpacity>
-            </ThemedView>
-
-            {/* Quick Stats */}
-            <ThemedView style={styles.sidebarCard}>
-              <ThemedText
-                type="defaultSemiBold"
-                style={styles.sidebarCardTitle}
-              >
-                Quick Stats
-              </ThemedText>
-              {quickStats.map((stat, index) => (
-                <ThemedView key={index} style={styles.statItem}>
-                  <ThemedText type="default" style={styles.statLabel}>
-                    {stat.label}
-                  </ThemedText>
-                  <ThemedView style={styles.ratingContainer}>
-                    <Ionicons
-                      name={stat.icon}
-                      size={16}
-                      color={THEME_COLOR}
-                    />
-                    <ThemedText
-                      type="defaultSemiBold"
-                      style={styles.statValue}
-                    >
-                      {stat.value}
-                    </ThemedText>
-                  </ThemedView>
-                </ThemedView>
-              ))}
             </ThemedView>
           </ThemedView>
         </ThemedView>

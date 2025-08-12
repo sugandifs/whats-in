@@ -1,11 +1,17 @@
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
+import { useAuth } from "@/context/AuthContext";
+import ApiService from "@/services/api";
+import { Recipe } from "@/services/types";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   FlatList,
   Modal,
+  RefreshControl,
   SafeAreaView,
   ScrollView,
   StatusBar,
@@ -19,24 +25,6 @@ type IoniconsName = keyof typeof Ionicons.glyphMap;
 
 const THEME_COLOR = "#FFB902";
 
-interface Recipe {
-  id: string;
-  name: string;
-  cuisine: string;
-  difficulty: "Easy" | "Medium" | "Hard";
-  prepTime: string;
-  cookTime: string;
-  servings: number;
-  rating: number;
-  image: string;
-  description: string;
-  ingredients: string[];
-  instructions: string[];
-  tags: string[];
-  isOwned: boolean;
-  isFavorite: boolean;
-}
-
 interface RecipeCategory {
   id: string;
   name: string;
@@ -47,6 +35,7 @@ interface RecipeCategory {
 
 export default function RecipesPage() {
   const router = useRouter();
+  const { currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState<
     "discover" | "yours" | "favorites"
   >("discover");
@@ -58,269 +47,246 @@ export default function RecipesPage() {
     useState(false);
   const [importUrl, setImportUrl] = useState("");
   const [generatePrompt, setGeneratePrompt] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const colorScheme = useColorScheme();
+
+  // Data states
+  const [allRecipes, setAllRecipes] = useState<Recipe[]>([]);
+  const [userRecipes, setUserRecipes] = useState<Recipe[]>([]);
+  const [favoriteRecipes, setFavoriteRecipes] = useState<Recipe[]>([]);
 
   const categories: RecipeCategory[] = [
     {
       id: "all",
       name: "All",
       icon: "grid",
-      count: 156,
+      count: allRecipes.length,
       color: THEME_COLOR,
     },
     {
       id: "breakfast",
       name: "Breakfast",
       icon: "sunny",
-      count: 24,
+      count: allRecipes.filter((r) => r.tags?.includes("breakfast"))
+        .length,
       color: "#f59e0b",
     },
     {
       id: "lunch",
       name: "Lunch",
       icon: "partly-sunny",
-      count: 38,
+      count: allRecipes.filter((r) => r.tags?.includes("lunch")).length,
       color: "#10b981",
     },
     {
       id: "dinner",
       name: "Dinner",
       icon: "moon",
-      count: 52,
+      count: allRecipes.filter((r) => r.tags?.includes("dinner"))
+        .length,
       color: "#8b5cf6",
     },
     {
       id: "dessert",
       name: "Dessert",
       icon: "heart",
-      count: 18,
+      count: allRecipes.filter((r) => r.tags?.includes("dessert"))
+        .length,
       color: "#ec4899",
     },
     {
       id: "vegetarian",
       name: "Vegetarian",
       icon: "leaf",
-      count: 31,
+      count: allRecipes.filter((r) => r.tags?.includes("vegetarian"))
+        .length,
       color: "#22c55e",
     },
     {
       id: "quick",
       name: "Quick & Easy",
       icon: "flash",
-      count: 42,
+      count: allRecipes.filter(
+        (r) =>
+          r.tags?.includes("quick") ||
+          (r.prepTime && parseInt(r.prepTime) <= 15)
+      ).length,
       color: "#f97316",
     },
   ];
 
-  const discoverRecipes: Recipe[] = [
-    {
-      id: "1",
-      name: "Mediterranean Quinoa Bowl",
-      cuisine: "Mediterranean",
-      difficulty: "Easy",
-      prepTime: "15 min",
-      cookTime: "20 min",
-      servings: 4,
-      rating: 4.8,
-      image: "🥗",
-      description:
-        "A healthy and flavorful quinoa bowl with fresh vegetables",
-      ingredients: [
-        "Quinoa",
-        "Cucumber",
-        "Tomatoes",
-        "Feta cheese",
-        "Olive oil",
-      ],
-      instructions: [
-        "Cook quinoa",
-        "Chop vegetables",
-        "Mix together",
-        "Serve",
-      ],
-      tags: ["healthy", "vegetarian", "mediterranean"],
-      isOwned: false,
-      isFavorite: false,
-    },
-    {
-      id: "2",
-      name: "Honey Garlic Chicken",
-      cuisine: "Asian",
-      difficulty: "Medium",
-      prepTime: "10 min",
-      cookTime: "25 min",
-      servings: 6,
-      rating: 4.9,
-      image: "🍗",
-      description: "Sweet and savory chicken with a sticky glaze",
-      ingredients: [
-        "Chicken thighs",
-        "Honey",
-        "Garlic",
-        "Soy sauce",
-        "Ginger",
-      ],
-      instructions: [
-        "Marinate chicken",
-        "Cook in pan",
-        "Add sauce",
-        "Simmer",
-      ],
-      tags: ["asian", "chicken", "sweet"],
-      isOwned: false,
-      isFavorite: true,
-    },
-    {
-      id: "3",
-      name: "Chocolate Lava Cake",
-      cuisine: "French",
-      difficulty: "Hard",
-      prepTime: "20 min",
-      cookTime: "12 min",
-      servings: 2,
-      rating: 4.7,
-      image: "🍰",
-      description: "Decadent chocolate dessert with molten center",
-      ingredients: [
-        "Dark chocolate",
-        "Butter",
-        "Eggs",
-        "Sugar",
-        "Flour",
-      ],
-      instructions: [
-        "Melt chocolate",
-        "Mix batter",
-        "Bake",
-        "Serve warm",
-      ],
-      tags: ["dessert", "chocolate", "romantic"],
-      isOwned: false,
-      isFavorite: false,
-    },
-  ];
+  // Load data from backend
+  const loadData = async () => {
+    try {
+      setLoading(true);
 
-  const yourRecipes: Recipe[] = [
-    {
-      id: "4",
-      name: "Grandma's Apple Pie",
-      cuisine: "American",
-      difficulty: "Medium",
-      prepTime: "30 min",
-      cookTime: "50 min",
-      servings: 8,
-      rating: 5.0,
-      image: "🥧",
-      description: "Family recipe passed down through generations",
-      ingredients: ["Apples", "Flour", "Butter", "Sugar", "Cinnamon"],
-      instructions: [
-        "Make crust",
-        "Prepare filling",
-        "Assemble",
-        "Bake",
-      ],
-      tags: ["family", "dessert", "traditional"],
-      isOwned: true,
-      isFavorite: true,
-    },
-    {
-      id: "5",
-      name: "Spicy Thai Curry",
-      cuisine: "Thai",
-      difficulty: "Medium",
-      prepTime: "15 min",
-      cookTime: "30 min",
-      servings: 4,
-      rating: 4.6,
-      image: "🍛",
-      description: "Homemade curry with fresh ingredients",
-      ingredients: [
-        "Coconut milk",
-        "Curry paste",
-        "Vegetables",
-        "Rice",
-        "Herbs",
-      ],
-      instructions: [
-        "Sauté paste",
-        "Add coconut milk",
-        "Simmer with vegetables",
-        "Serve over rice",
-      ],
-      tags: ["spicy", "thai", "curry"],
-      isOwned: true,
-      isFavorite: false,
-    },
-  ];
+      // Load all recipes
+      const recipes = await ApiService.getRecipes();
+      setAllRecipes(recipes);
 
-  const favoriteRecipes = [...discoverRecipes, ...yourRecipes].filter(
-    (recipe) => recipe.isFavorite
-  );
+      // Load user's own recipes
+      if (currentUser) {
+        // TODO: change to a getUserGeneratedRecipes endpoint later
+        const ownRecipes = await ApiService.getRecipes();
+        setUserRecipes(ownRecipes);
+      }
+
+      // Load favorite recipes
+      if (currentUser) {
+        const favorites = await ApiService.getFavoriteRecipes();
+        setFavoriteRecipes(favorites);
+      }
+    } catch (error) {
+      console.error("Failed to load recipes:", error);
+      Alert.alert("Error", "Failed to load recipes. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
+  };
+
+  useEffect(() => {
+    if (currentUser) {
+      loadData();
+    }
+  }, [currentUser]);
 
   const getCurrentRecipes = () => {
     switch (activeTab) {
       case "yours":
-        return yourRecipes;
+        return userRecipes;
       case "favorites":
         return favoriteRecipes;
       default:
-        return discoverRecipes;
+        return allRecipes;
     }
   };
 
   const filteredRecipes = getCurrentRecipes().filter((recipe) => {
     const matchesSearch =
       recipe.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      recipe.cuisine.toLowerCase().includes(searchQuery.toLowerCase());
+      recipe.cuisine?.toLowerCase().includes(searchQuery.toLowerCase());
+
     const matchesCategory =
       selectedCategory === "all" ||
-      recipe.tags.includes(selectedCategory) ||
-      (selectedCategory === "breakfast" &&
-        recipe.tags.includes("breakfast")) ||
-      (selectedCategory === "lunch" && recipe.tags.includes("lunch")) ||
-      (selectedCategory === "dinner" &&
-        recipe.tags.includes("dinner")) ||
-      (selectedCategory === "dessert" &&
-        recipe.tags.includes("dessert")) ||
-      (selectedCategory === "vegetarian" &&
-        recipe.tags.includes("vegetarian")) ||
+      recipe.tags?.includes(selectedCategory) ||
       (selectedCategory === "quick" &&
-        (recipe.tags.includes("quick") ||
-          parseInt(recipe.prepTime) <= 15));
+        (recipe.tags?.includes("quick") ||
+          (recipe.prepTime && parseInt(recipe.prepTime) <= 15)));
+
     return matchesSearch && matchesCategory;
   });
 
   const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty) {
-      case "Easy":
+    switch (difficulty?.toLowerCase()) {
+      case "easy":
         return "#10b981";
-      case "Medium":
+      case "medium":
         return "#f59e0b";
-      case "Hard":
+      case "hard":
         return "#ef4444";
       default:
         return THEME_COLOR;
     }
   };
 
-  const handleImportRecipe = () => {
-    // Simulate recipe import
-    console.log("Importing recipe from:", importUrl);
-    setImportUrl("");
-    setImportModalVisible(false);
+  const handleToggleFavorite = async (
+    recipeId: string,
+    isFavorite: boolean
+  ) => {
+    try {
+      if (isFavorite) {
+        await ApiService.addToFavorites(recipeId);
+      } else {
+        await ApiService.removeFromFavorites(recipeId);
+      }
+
+      await loadData();
+    } catch (error) {
+      console.error("Failed to toggle favorite:", error);
+      Alert.alert("Error", "Failed to update favorite status.");
+    }
   };
 
-  const handleGenerateRecipe = () => {
-    // Simulate recipe generation
-    console.log("Generating recipe with prompt:", generatePrompt);
-    setGeneratePrompt("");
-    setGenerateModalVisible(false);
+  const handleImportRecipe = async () => {
+    if (!importUrl.trim()) {
+      Alert.alert("Error", "Please enter a recipe URL");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      // TODO: Implement recipe import in backend
+      // await ApiService.importRecipe(importUrl);
+
+      console.log("Importing recipe from:", importUrl);
+      setImportUrl("");
+      setImportModalVisible(false);
+      Alert.alert("Success", "Recipe imported successfully!");
+
+      // Refresh data after import
+      await loadData();
+    } catch (error) {
+      console.error("Failed to import recipe:", error);
+      Alert.alert(
+        "Error",
+        "Failed to import recipe. Please try again."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGenerateRecipe = async () => {
+    if (!generatePrompt.trim()) {
+      Alert.alert("Error", "Please enter a recipe description");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      // TODO: Implement recipe generation in backend
+      // const newRecipe = await ApiService.generateRecipe(generatePrompt);
+
+      console.log("Generating recipe with prompt:", generatePrompt);
+      setGeneratePrompt("");
+      setGenerateModalVisible(false);
+      Alert.alert("Success", "Recipe generated successfully!");
+
+      // Refresh data after generation
+      await loadData();
+    } catch (error) {
+      console.error("Failed to generate recipe:", error);
+      Alert.alert(
+        "Error",
+        "Failed to generate recipe. Please try again."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRecipePress = (recipe: Recipe) => {
+    // TODO: Navigate to recipe detail page
+    console.log("Navigate to recipe:", recipe._id);
+    // router.push(`/recipe/${recipe._id}`);
   };
 
   const renderRecipeCard = ({ item }: { item: Recipe }) => (
-    <TouchableOpacity style={styles.recipeCard}>
+    <TouchableOpacity
+      style={styles.recipeCard}
+      onPress={() => handleRecipePress(item)}
+    >
       <ThemedView style={styles.recipeImageContainer}>
-        <ThemedText style={styles.recipeEmoji}>{item.image}</ThemedText>
+        <ThemedText style={styles.recipeEmoji}>
+          {item.image || "🍽️"}
+        </ThemedText>
         {item.isOwned && (
           <ThemedView style={styles.ownedBadge}>
             <Ionicons
@@ -330,7 +296,12 @@ export default function RecipesPage() {
             />
           </ThemedView>
         )}
-        <TouchableOpacity style={styles.favoriteButton}>
+        <TouchableOpacity
+          style={styles.favoriteButton}
+          onPress={() =>
+            handleToggleFavorite(item._id, !item.isFavorite)
+          }
+        >
           <Ionicons
             name={item.isFavorite ? "heart" : "heart-outline"}
             size={18}
@@ -350,7 +321,7 @@ export default function RecipesPage() {
           {item.name}
         </ThemedText>
         <ThemedText type="default" style={styles.recipeCuisine}>
-          {item.cuisine}
+          {item.cuisine || "Various"}
         </ThemedText>
 
         <ThemedView style={styles.recipeStats}>
@@ -361,7 +332,7 @@ export default function RecipesPage() {
               color={colorScheme === "dark" ? "#fff" : "#666"}
             />
             <ThemedText type="default" style={styles.recipeStatText}>
-              {item.prepTime}
+              {item.prepTime || "N/A"}
             </ThemedText>
           </ThemedView>
           <ThemedView style={styles.recipeStat}>
@@ -371,7 +342,7 @@ export default function RecipesPage() {
               color={colorScheme === "dark" ? "#fff" : "#666"}
             />
             <ThemedText type="default" style={styles.recipeStatText}>
-              {item.servings}
+              {item.servings || "N/A"}
             </ThemedText>
           </ThemedView>
           <ThemedView style={styles.recipeStat}>
@@ -381,22 +352,26 @@ export default function RecipesPage() {
               color={THEME_COLOR}
             />
             <ThemedText type="default" style={styles.recipeStatText}>
-              {item.rating}
+              {item.rating || "N/A"}
             </ThemedText>
           </ThemedView>
         </ThemedView>
 
         <ThemedView style={styles.recipeTags}>
-          <ThemedView
-            style={[
-              styles.difficultyTag,
-              { backgroundColor: getDifficultyColor(item.difficulty) },
-            ]}
-          >
-            <ThemedText style={styles.difficultyText}>
-              {item.difficulty}
-            </ThemedText>
-          </ThemedView>
+          {item.difficulty && (
+            <ThemedView
+              style={[
+                styles.difficultyTag,
+                {
+                  backgroundColor: getDifficultyColor(item.difficulty),
+                },
+              ]}
+            >
+              <ThemedText style={styles.difficultyText}>
+                {item.difficulty}
+              </ThemedText>
+            </ThemedView>
+          )}
         </ThemedView>
       </ThemedView>
     </TouchableOpacity>
@@ -433,6 +408,22 @@ export default function RecipesPage() {
       </ThemedText>
     </TouchableOpacity>
   );
+
+  if (loading) {
+    return (
+      <SafeAreaView
+        style={[
+          styles.container,
+          { justifyContent: "center", alignItems: "center" },
+        ]}
+      >
+        <ActivityIndicator size="large" color={THEME_COLOR} />
+        <ThemedText style={{ marginTop: 16 }}>
+          Loading recipes...
+        </ThemedText>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -492,7 +483,7 @@ export default function RecipesPage() {
           />
           <ThemedText
             type="defaultSemiBold"
-            style={[styles.actionButtonText, { color: THEME_COLOR }]}
+            style={[styles.actionButtonText, { color: "black" }]}
           >
             Generate Recipe
           </ThemedText>
@@ -515,7 +506,7 @@ export default function RecipesPage() {
           />
           <ThemedText
             type="defaultSemiBold"
-            style={[styles.actionButtonText, { color: THEME_COLOR }]}
+            style={[styles.actionButtonText, { color: "black" }]}
           >
             Import Recipe
           </ThemedText>
@@ -587,6 +578,12 @@ export default function RecipesPage() {
       <ScrollView
         style={styles.content}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+          />
+        }
       >
         {/* Categories */}
         <ThemedView style={styles.categoriesSection}>
@@ -618,16 +615,49 @@ export default function RecipesPage() {
             </ThemedText>
           </ThemedView>
 
-          <ThemedView style={styles.recipesGrid}>
-            {filteredRecipes.map((recipe) => (
-              <ThemedView
-                key={recipe.id}
-                style={styles.recipeCardContainer}
+          {filteredRecipes.length > 0 ? (
+            <ThemedView style={styles.recipesGrid}>
+              {filteredRecipes.map((recipe) => (
+                <ThemedView
+                  key={recipe._id}
+                  style={styles.recipeCardContainer}
+                >
+                  {renderRecipeCard({ item: recipe })}
+                </ThemedView>
+              ))}
+            </ThemedView>
+          ) : (
+            <ThemedView style={styles.emptyState}>
+              <Ionicons
+                name={"book-outline" as IoniconsName}
+                size={48}
+                color={colorScheme === "dark" ? "#666" : "#ccc"}
+              />
+              <ThemedText style={styles.emptyText}>
+                {activeTab === "yours"
+                  ? "No recipes created yet"
+                  : activeTab === "favorites"
+                  ? "No favorite recipes yet"
+                  : "No recipes found"}
+              </ThemedText>
+              <TouchableOpacity
+                onPress={() => {
+                  if (activeTab === "discover") {
+                    setSearchQuery("");
+                    setSelectedCategory("all");
+                  } else {
+                    setActiveTab("discover");
+                  }
+                }}
               >
-                {renderRecipeCard({ item: recipe })}
-              </ThemedView>
-            ))}
-          </ThemedView>
+                <ThemedText type="link">
+                  {activeTab === "discover"
+                    ? "Clear filters"
+                    : "Browse recipes"}
+                </ThemedText>
+              </TouchableOpacity>
+            </ThemedView>
+          )}
         </ThemedView>
       </ScrollView>
 
@@ -639,7 +669,15 @@ export default function RecipesPage() {
         onRequestClose={() => setImportModalVisible(false)}
       >
         <ThemedView style={styles.modalOverlay}>
-          <ThemedView style={styles.modalContent}>
+          <ThemedView
+            style={[
+              styles.modalContent,
+              {
+                backgroundColor:
+                  colorScheme === "dark" ? "#1a1a1a" : "#ffffff",
+              },
+            ]}
+          >
             <ThemedView style={styles.modalHeader}>
               <ThemedText type="subtitle" style={styles.modalTitle}>
                 Import Recipe
@@ -690,6 +728,7 @@ export default function RecipesPage() {
                   { backgroundColor: THEME_COLOR },
                 ]}
                 onPress={handleImportRecipe}
+                disabled={!importUrl.trim()}
               >
                 <ThemedText
                   type="defaultSemiBold"
@@ -711,7 +750,15 @@ export default function RecipesPage() {
         onRequestClose={() => setGenerateModalVisible(false)}
       >
         <ThemedView style={styles.modalOverlay}>
-          <ThemedView style={styles.modalContent}>
+          <ThemedView
+            style={[
+              styles.modalContent,
+              {
+                backgroundColor:
+                  colorScheme === "dark" ? "#1a1a1a" : "#ffffff",
+              },
+            ]}
+          >
             <ThemedView style={styles.modalHeader}>
               <ThemedText type="subtitle" style={styles.modalTitle}>
                 Generate Recipe
@@ -764,6 +811,7 @@ export default function RecipesPage() {
                   { backgroundColor: THEME_COLOR },
                 ]}
                 onPress={handleGenerateRecipe}
+                disabled={!generatePrompt.trim()}
               >
                 <Ionicons
                   name={"sparkles" as IoniconsName}
@@ -1035,6 +1083,20 @@ const styles = StyleSheet.create({
     color: "white",
     fontWeight: "600",
   },
+  emptyState: {
+    alignItems: "center",
+    paddingVertical: 40,
+    backgroundColor: "rgba(128, 128, 128, 0.05)",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(128, 128, 128, 0.2)",
+  },
+  emptyText: {
+    marginTop: 12,
+    marginBottom: 8,
+    opacity: 0.7,
+    textAlign: "center",
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
@@ -1046,7 +1108,6 @@ const styles = StyleSheet.create({
     maxWidth: 400,
     borderRadius: 16,
     overflow: "hidden",
-    backgroundColor: "#ffffff", // For light mode
   },
   modalHeader: {
     flexDirection: "row",

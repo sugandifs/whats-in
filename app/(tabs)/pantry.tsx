@@ -1,12 +1,17 @@
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
+import { useAuth } from "@/context/AuthContext";
+import ApiService from "@/services/api";
+import { PantryItem, PantryStats } from "@/services/types";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   FlatList,
   Modal,
+  RefreshControl,
   SafeAreaView,
   ScrollView,
   StatusBar,
@@ -20,20 +25,6 @@ type IoniconsName = keyof typeof Ionicons.glyphMap;
 
 const THEME_COLOR = "#FFB902";
 
-interface PantryItem {
-  id: string;
-  name: string;
-  category: string;
-  quantity: number;
-  unit: string;
-  expirationDate: Date;
-  purchaseDate: Date;
-  location: string;
-  emoji: string;
-  notes?: string;
-  barcode?: string;
-}
-
 interface PantryCategory {
   id: string;
   name: string;
@@ -44,6 +35,7 @@ interface PantryCategory {
 
 export default function PantryPage() {
   const router = useRouter();
+  const { currentUser } = useAuth();
   const [activeView, setActiveView] = useState<"grid" | "list">("grid");
   const [selectedCategory, setSelectedCategory] =
     useState<string>("all");
@@ -53,64 +45,28 @@ export default function PantryPage() {
   const [sortBy, setSortBy] = useState<
     "name" | "expiration" | "category"
   >("expiration");
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const colorScheme = useColorScheme();
+
+  // Data states
+  const [pantryItems, setPantryItems] = useState<PantryItem[]>([]);
+  const [pantryStats, setPantryStats] = useState<PantryStats | null>(
+    null
+  );
+  const [filteredItems, setFilteredItems] = useState<PantryItem[]>([]);
 
   // Form state for adding new items
   const [newItem, setNewItem] = useState({
     name: "",
-    category: "fresh",
+    category: "fresh" as const,
     quantity: 1,
-    unit: "piece",
-    expirationDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
-    location: "fridge",
+    unit: "piece" as const,
+    expirationDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    location: "fridge" as const,
     emoji: "🥬",
     notes: "",
   });
-
-  const categories: PantryCategory[] = [
-    {
-      id: "all",
-      name: "All Items",
-      icon: "grid",
-      color: THEME_COLOR,
-      count: 47,
-    },
-    {
-      id: "fresh",
-      name: "Fresh",
-      icon: "leaf",
-      color: "#22c55e",
-      count: 12,
-    },
-    {
-      id: "dairy",
-      name: "Dairy",
-      icon: "water",
-      color: "#3b82f6",
-      count: 8,
-    },
-    {
-      id: "meat",
-      name: "Meat & Fish",
-      icon: "fish",
-      color: "#ef4444",
-      count: 6,
-    },
-    {
-      id: "pantry",
-      name: "Pantry",
-      icon: "archive",
-      color: "#8b5cf6",
-      count: 15,
-    },
-    {
-      id: "frozen",
-      name: "Frozen",
-      icon: "snow",
-      color: "#06b6d4",
-      count: 6,
-    },
-  ];
 
   const locations = [
     { id: "fridge", name: "Refrigerator", icon: "snow" },
@@ -132,83 +88,114 @@ export default function PantryPage() {
     "package",
   ];
 
-  const [pantryItems, setPantryItems] = useState<PantryItem[]>([
+  const categories: PantryCategory[] = [
     {
-      id: "1",
-      name: "Spinach",
-      category: "fresh",
-      quantity: 1,
-      unit: "package",
-      expirationDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
-      purchaseDate: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-      location: "fridge",
-      emoji: "🥬",
-      notes: "Organic baby spinach",
+      id: "all",
+      name: "All Items",
+      icon: "grid",
+      color: THEME_COLOR,
+      count: pantryStats?.totalItems || 0,
     },
     {
-      id: "2",
-      name: "Bell Peppers",
-      category: "fresh",
-      quantity: 3,
-      unit: "piece",
-      expirationDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
-      purchaseDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-      location: "fridge",
-      emoji: "🫑",
+      id: "fresh",
+      name: "Fresh",
+      icon: "leaf",
+      color: "#22c55e",
+      count: pantryStats?.categories.fresh || 0,
     },
     {
-      id: "3",
-      name: "Greek Yogurt",
-      category: "dairy",
-      quantity: 1,
-      unit: "package",
-      expirationDate: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000),
-      purchaseDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-      location: "fridge",
-      emoji: "🥛",
+      id: "dairy",
+      name: "Dairy",
+      icon: "water",
+      color: "#3b82f6",
+      count: pantryStats?.categories.dairy || 0,
     },
     {
-      id: "4",
-      name: "Chicken Breast",
-      category: "meat",
-      quantity: 2,
-      unit: "lb",
-      expirationDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000),
-      purchaseDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-      location: "fridge",
-      emoji: "🍗",
+      id: "meat",
+      name: "Meat & Fish",
+      icon: "fish",
+      color: "#ef4444",
+      count: pantryStats?.categories.meat || 0,
     },
     {
-      id: "5",
-      name: "Pasta",
-      category: "pantry",
-      quantity: 2,
-      unit: "package",
-      expirationDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
-      purchaseDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-      location: "pantry",
-      emoji: "🍝",
+      id: "pantry",
+      name: "Pantry",
+      icon: "archive",
+      color: "#8b5cf6",
+      count: pantryStats?.categories.pantry || 0,
     },
     {
-      id: "6",
-      name: "Frozen Berries",
-      category: "frozen",
-      quantity: 1,
-      unit: "package",
-      expirationDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
-      purchaseDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-      location: "freezer",
-      emoji: "🫐",
+      id: "frozen",
+      name: "Frozen",
+      icon: "snow",
+      color: "#06b6d4",
+      count: pantryStats?.categories.frozen || 0,
     },
-  ]);
+  ];
 
-  const getDaysUntilExpiration = (expirationDate: Date) => {
+  // Load data from backend
+  const loadData = async () => {
+    try {
+      setLoading(true);
+
+      // Load pantry items with current filters
+      const filters = {
+        category:
+          selectedCategory !== "all" ? selectedCategory : undefined,
+        sortBy: sortBy,
+      };
+
+      const [items, stats] = await Promise.all([
+        ApiService.getPantryItems(filters),
+        ApiService.getPantryStats(),
+      ]);
+
+      setPantryItems(items);
+      setPantryStats(stats);
+    } catch (error) {
+      console.error("Failed to load pantry data:", error);
+      Alert.alert(
+        "Error",
+        "Failed to load pantry data. Please try again."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
+  };
+
+  // Load data on component mount and when filters change
+  useEffect(() => {
+    if (currentUser) {
+      loadData();
+    }
+  }, [currentUser, selectedCategory, sortBy]);
+
+  // Filter items based on search query
+  useEffect(() => {
+    if (searchQuery.trim() === "") {
+      setFilteredItems(pantryItems);
+    } else {
+      const filtered = pantryItems.filter((item) =>
+        item.name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      setFilteredItems(filtered);
+    }
+  }, [pantryItems, searchQuery]);
+
+  const getDaysUntilExpiration = (expirationDate: Date | string) => {
     const today = new Date();
-    const diffTime = expirationDate.getTime() - today.getTime();
+    const expDate = new Date(expirationDate);
+    const diffTime = expDate.getTime() - today.getTime();
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   };
 
-  const getExpirationStatus = (expirationDate: Date) => {
+  const getExpirationStatus = (expirationDate: Date | string) => {
     const days = getDaysUntilExpiration(expirationDate);
     if (days < 0)
       return { status: "expired", color: "#ef4444", text: "Expired" };
@@ -221,54 +208,52 @@ export default function PantryPage() {
     return { status: "good", color: "#10b981", text: `${days}d` };
   };
 
-  const filteredItems = pantryItems.filter((item) => {
-    const matchesSearch = item.name
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase());
-    const matchesCategory =
-      selectedCategory === "all" || item.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
-
-  const sortedItems = [...filteredItems].sort((a, b) => {
-    switch (sortBy) {
-      case "name":
-        return a.name.localeCompare(b.name);
-      case "expiration":
-        return a.expirationDate.getTime() - b.expirationDate.getTime();
-      case "category":
-        return a.category.localeCompare(b.category);
-      default:
-        return 0;
+  const addNewItem = async () => {
+    if (!newItem.name.trim()) {
+      Alert.alert("Error", "Please enter an item name");
+      return;
     }
-  });
 
-  const addNewItem = () => {
-    const item: PantryItem = {
-      id: Date.now().toString(),
-      name: newItem.name,
-      category: newItem.category,
-      quantity: newItem.quantity,
-      unit: newItem.unit,
-      expirationDate: newItem.expirationDate,
-      purchaseDate: new Date(),
-      location: newItem.location,
-      emoji: newItem.emoji,
-      notes: newItem.notes,
-    };
+    try {
+      setLoading(true);
 
-    setPantryItems([...pantryItems, item]);
-    setNewItem({
-      name: "",
-      category: "fresh",
-      quantity: 1,
-      unit: "piece",
-      expirationDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      location: "fridge",
-      emoji: "🥬",
-      notes: "",
-    });
-    setAddItemModalVisible(false);
+      const itemData = {
+        name: newItem.name,
+        category: newItem.category,
+        quantity: newItem.quantity,
+        unit: newItem.unit,
+        expirationDate: newItem.expirationDate,
+        purchaseDate: new Date(),
+        location: newItem.location,
+        emoji: newItem.emoji,
+        notes: newItem.notes,
+      };
+
+      await ApiService.createPantryItem(itemData);
+
+      // Reset form
+      setNewItem({
+        name: "",
+        category: "fresh",
+        quantity: 1,
+        unit: "piece",
+        expirationDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        location: "fridge",
+        emoji: "🥬",
+        notes: "",
+      });
+
+      setAddItemModalVisible(false);
+      Alert.alert("Success", "Item added to pantry!");
+
+      // Refresh data
+      await loadData();
+    } catch (error) {
+      console.error("Failed to add item:", error);
+      Alert.alert("Error", "Failed to add item. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const removeItem = (id: string) => {
@@ -280,14 +265,70 @@ export default function PantryPage() {
         {
           text: "Remove",
           style: "destructive",
-          onPress: () =>
-            setPantryItems(
-              pantryItems.filter((item) => item.id !== id)
-            ),
+          onPress: async () => {
+            try {
+              await ApiService.deletePantryItem(id);
+              Alert.alert("Success", "Item removed from pantry!");
+              await loadData();
+            } catch (error) {
+              console.error("Failed to remove item:", error);
+              Alert.alert(
+                "Error",
+                "Failed to remove item. Please try again."
+              );
+            }
+          },
         },
       ]
     );
   };
+
+  const handleQuantityUpdate = async (
+    itemId: string,
+    newQuantity: number
+  ) => {
+    if (newQuantity < 0) return;
+
+    try {
+      await ApiService.updatePantryItemQuantity(itemId, newQuantity);
+      await loadData(); // Refresh data
+    } catch (error) {
+      console.error("Failed to update quantity:", error);
+      Alert.alert("Error", "Failed to update quantity.");
+    }
+  };
+
+  // const handleBarcodeScan = async (barcode: string) => {
+  //   try {
+  //     setLoading(true);
+  //     const result = await ApiService.scanBarcode(barcode);
+
+  //     if (result.success) {
+  //       // Pre-fill the form with scanned data
+  //       setNewItem({
+  //         name: result.item.name || "",
+  //         category: result.item.category || "pantry",
+  //         quantity: result.item.quantity || 1,
+  //         unit: result.item.unit || "piece",
+  //         expirationDate: result.item.expirationDate
+  //           ? new Date(result.item.expirationDate)
+  //           : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+  //         location: result.item.location || "pantry",
+  //         emoji: result.item.emoji || "📦",
+  //         notes: result.item.notes || "",
+  //       });
+
+  //       setScanModalVisible(false);
+  //       setAddItemModalVisible(true);
+  //       Alert.alert("Barcode Scanned", result.message);
+  //     }
+  //   } catch (error) {
+  //     console.error("Barcode scan failed:", error);
+  //     Alert.alert("Error", "Failed to scan barcode. Please try again.");
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
   const renderItemCard = ({ item }: { item: PantryItem }) => {
     const expiration = getExpirationStatus(item.expirationDate);
@@ -299,7 +340,7 @@ export default function PantryPage() {
           styles.itemCard,
           activeView === "list" && styles.itemCardList,
         ]}
-        onLongPress={() => removeItem(item.id)}
+        onLongPress={() => removeItem(item._id)}
       >
         <ThemedView style={styles.itemHeader}>
           <ThemedText style={styles.itemEmoji}>{item.emoji}</ThemedText>
@@ -319,9 +360,30 @@ export default function PantryPage() {
           <ThemedText type="defaultSemiBold" style={styles.itemName}>
             {item.name}
           </ThemedText>
-          <ThemedText type="default" style={styles.itemQuantity}>
-            {item.quantity} {item.unit}
-          </ThemedText>
+
+          <ThemedView style={styles.quantityContainer}>
+            <TouchableOpacity
+              style={styles.quantityButton}
+              onPress={() =>
+                handleQuantityUpdate(item._id, item.quantity - 1)
+              }
+            >
+              <Ionicons name="remove" size={16} color={THEME_COLOR} />
+            </TouchableOpacity>
+
+            <ThemedText type="default" style={styles.itemQuantity}>
+              {item.quantity} {item.unit}
+            </ThemedText>
+
+            <TouchableOpacity
+              style={styles.quantityButton}
+              onPress={() =>
+                handleQuantityUpdate(item._id, item.quantity + 1)
+              }
+            >
+              <Ionicons name="add" size={16} color={THEME_COLOR} />
+            </TouchableOpacity>
+          </ThemedView>
 
           <ThemedView style={styles.itemDetails}>
             <ThemedView style={styles.itemDetail}>
@@ -342,7 +404,7 @@ export default function PantryPage() {
                 color={colorScheme === "dark" ? "#fff" : "#666"}
               />
               <ThemedText type="default" style={styles.itemDetailText}>
-                {item.expirationDate.toLocaleDateString()}
+                {new Date(item.expirationDate).toLocaleDateString()}
               </ThemedText>
             </ThemedView>
           </ThemedView>
@@ -389,8 +451,26 @@ export default function PantryPage() {
     </TouchableOpacity>
   );
 
+  if (loading && pantryItems.length === 0) {
+    return (
+      <SafeAreaView
+        style={[
+          styles.container,
+          { justifyContent: "center", alignItems: "center" },
+        ]}
+      >
+        <ActivityIndicator size="large" color={THEME_COLOR} />
+        <ThemedText style={{ marginTop: 16 }}>
+          Loading your pantry...
+        </ThemedText>
+      </SafeAreaView>
+    );
+  }
+
   const expiringItems = pantryItems.filter(
-    (item) => getDaysUntilExpiration(item.expirationDate) <= 3
+    (item) =>
+      getDaysUntilExpiration(item.expirationDate) <= 3 &&
+      getDaysUntilExpiration(item.expirationDate) >= 0
   );
 
   return (
@@ -453,7 +533,7 @@ export default function PantryPage() {
       <ThemedView style={styles.statsContainer}>
         <ThemedView style={styles.statCard}>
           <ThemedText type="default" style={styles.statNumber}>
-            {pantryItems.length}
+            {pantryStats?.totalItems || 0}
           </ThemedText>
           <ThemedText type="default" style={styles.statLabel}>
             Total Items
@@ -514,7 +594,20 @@ export default function PantryPage() {
           />
         </ThemedView>
 
-        <TouchableOpacity style={styles.sortButton}>
+        <TouchableOpacity
+          style={styles.sortButton}
+          onPress={() => {
+            // Cycle through sort options
+            const sortOptions: (typeof sortBy)[] = [
+              "expiration",
+              "name",
+              "category",
+            ];
+            const currentIndex = sortOptions.indexOf(sortBy);
+            const nextIndex = (currentIndex + 1) % sortOptions.length;
+            setSortBy(sortOptions[nextIndex]);
+          }}
+        >
           <Ionicons
             name={"funnel" as IoniconsName}
             size={18}
@@ -526,6 +619,13 @@ export default function PantryPage() {
       <ScrollView
         style={styles.content}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[THEME_COLOR]}
+          />
+        }
       >
         {/* Categories */}
         <ThemedView style={styles.categoriesSection}>
@@ -549,28 +649,56 @@ export default function PantryPage() {
                     ?.name || "Items"}
             </ThemedText>
             <ThemedText type="default" style={styles.itemCount}>
-              {sortedItems.length} items
+              {filteredItems.length} items
             </ThemedText>
           </ThemedView>
 
-          <ThemedView
-            style={[
-              styles.itemsGrid,
-              activeView === "list" && styles.itemsList,
-            ]}
-          >
-            {sortedItems.map((item) => (
-              <ThemedView
-                key={item.id}
-                style={[
-                  styles.itemContainer,
-                  activeView === "list" && styles.itemContainerList,
-                ]}
+          {filteredItems.length > 0 ? (
+            <ThemedView
+              style={[
+                styles.itemsGrid,
+                activeView === "list" && styles.itemsList,
+              ]}
+            >
+              {filteredItems.map((item) => (
+                <ThemedView
+                  key={item._id}
+                  style={[
+                    styles.itemContainer,
+                    activeView === "list" && styles.itemContainerList,
+                  ]}
+                >
+                  {renderItemCard({ item })}
+                </ThemedView>
+              ))}
+            </ThemedView>
+          ) : (
+            <ThemedView style={styles.emptyState}>
+              <Ionicons
+                name={"archive-outline" as IoniconsName}
+                size={48}
+                color={colorScheme === "dark" ? "#666" : "#ccc"}
+              />
+              <ThemedText style={styles.emptyText}>
+                {searchQuery
+                  ? "No items match your search"
+                  : "Your pantry is empty"}
+              </ThemedText>
+              <TouchableOpacity
+                onPress={() => {
+                  if (searchQuery) {
+                    setSearchQuery("");
+                  } else {
+                    setAddItemModalVisible(true);
+                  }
+                }}
               >
-                {renderItemCard({ item })}
-              </ThemedView>
-            ))}
-          </ThemedView>
+                <ThemedText type="link">
+                  {searchQuery ? "Clear search" : "Add your first item"}
+                </ThemedText>
+              </TouchableOpacity>
+            </ThemedView>
+          )}
         </ThemedView>
       </ScrollView>
 
@@ -582,7 +710,15 @@ export default function PantryPage() {
         onRequestClose={() => setAddItemModalVisible(false)}
       >
         <ThemedView style={styles.modalOverlay}>
-          <ThemedView style={styles.modalContent}>
+          <ThemedView
+            style={[
+              styles.modalContent,
+              {
+                backgroundColor:
+                  colorScheme === "dark" ? "#1a1a1a" : "#ffffff",
+              },
+            ]}
+          >
             <ThemedView style={styles.modalHeader}>
               <ThemedText type="subtitle" style={styles.modalTitle}>
                 Add New Item
@@ -726,7 +862,7 @@ export default function PantryPage() {
                         onPress={() =>
                           setNewItem({
                             ...newItem,
-                            category: category.id,
+                            category: category.id as any,
                           })
                         }
                       >
@@ -777,7 +913,7 @@ export default function PantryPage() {
                       onPress={() =>
                         setNewItem({
                           ...newItem,
-                          location: location.id,
+                          location: location.id as any,
                         })
                       }
                     >
@@ -868,20 +1004,26 @@ export default function PantryPage() {
                   { backgroundColor: THEME_COLOR },
                 ]}
                 onPress={addNewItem}
-                disabled={!newItem.name.trim()}
+                disabled={!newItem.name.trim() || loading}
               >
-                <Ionicons
-                  name={"add" as IoniconsName}
-                  size={18}
-                  color="white"
-                  style={{ marginRight: 8 }}
-                />
-                <ThemedText
-                  type="defaultSemiBold"
-                  style={styles.modalButtonText}
-                >
-                  Add to Pantry
-                </ThemedText>
+                {loading ? (
+                  <ActivityIndicator size="small" color="white" />
+                ) : (
+                  <>
+                    <Ionicons
+                      name={"add" as IoniconsName}
+                      size={18}
+                      color="white"
+                      style={{ marginRight: 8 }}
+                    />
+                    <ThemedText
+                      type="defaultSemiBold"
+                      style={styles.modalButtonText}
+                    >
+                      Add to Pantry
+                    </ThemedText>
+                  </>
+                )}
               </TouchableOpacity>
             </ScrollView>
           </ThemedView>
@@ -896,7 +1038,15 @@ export default function PantryPage() {
         onRequestClose={() => setScanModalVisible(false)}
       >
         <ThemedView style={styles.modalOverlay}>
-          <ThemedView style={styles.scanModalContent}>
+          <ThemedView
+            style={[
+              styles.scanModalContent,
+              {
+                backgroundColor:
+                  colorScheme === "dark" ? "#1a1a1a" : "#ffffff",
+              },
+            ]}
+          >
             <ThemedView style={styles.modalHeader}>
               <ThemedText type="subtitle" style={styles.modalTitle}>
                 Scan Barcode
@@ -923,6 +1073,19 @@ export default function PantryPage() {
                   Position barcode within the frame
                 </ThemedText>
               </ThemedView>
+
+              {/* Simulate barcode scan for demo */}
+              <TouchableOpacity
+                style={[
+                  styles.modalButton,
+                  { backgroundColor: THEME_COLOR, marginTop: 20 },
+                ]}
+                onPress={() => console.log("scan")}
+              >
+                <ThemedText style={styles.modalButtonText}>
+                  Simulate Scan (Demo)
+                </ThemedText>
+              </TouchableOpacity>
             </ThemedView>
           </ThemedView>
         </ThemedView>
@@ -1184,6 +1347,34 @@ const styles = StyleSheet.create({
     opacity: 0.6,
     marginTop: 4,
     fontStyle: "italic",
+  },
+  quantityContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+    backgroundColor: "transparent",
+  },
+  quantityButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: `${THEME_COLOR}20`,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emptyState: {
+    alignItems: "center",
+    paddingVertical: 40,
+    backgroundColor: "rgba(128, 128, 128, 0.05)",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(128, 128, 128, 0.2)",
+  },
+  emptyText: {
+    marginTop: 12,
+    marginBottom: 8,
+    opacity: 0.7,
+    textAlign: "center",
   },
   modalOverlay: {
     flex: 1,

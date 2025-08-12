@@ -1,7 +1,10 @@
 import { auth } from "../config/firebase";
 import {
+  CreatePantryItemData,
   CreateProfileData,
   CreateRecipeData,
+  PantryItem,
+  PantryStats,
   Recipe,
   User,
 } from "./types";
@@ -92,6 +95,10 @@ class ApiService {
     return this.request<Recipe>(`/recipes/${recipeId}`);
   }
 
+  async getFavoriteRecipes(): Promise<Recipe[]> {
+    return this.request<Recipe[]>("/recipes/favorites");
+  }
+
   async createRecipe(recipeData: CreateRecipeData): Promise<Recipe> {
     return this.request<Recipe>("/recipes", {
       method: "POST",
@@ -121,15 +128,119 @@ class ApiService {
     });
   }
 
-  // Pantry methods (for future use)
-  async getPantryItems(): Promise<any[]> {
-    return this.request<any[]>("/pantry");
+  async addToFavorites(recipeId: string): Promise<Recipe> {
+    return this.request<Recipe>(`/recipes/${recipeId}/favorite`, {
+      method: "POST",
+    });
   }
 
-  async createPantryItem(itemData: any): Promise<any> {
-    return this.request<any>("/pantry", {
+  async removeFromFavorites(recipeId: string): Promise<Recipe> {
+    return this.request<Recipe>(`/recipes/${recipeId}/favorite`, {
+      method: "DELETE",
+    });
+  }
+
+  // Pantry methods
+  async getPantryItems(filters?: {
+    category?: string;
+    location?: string;
+    sortBy?: string;
+  }): Promise<PantryItem[]> {
+    const queryParams = new URLSearchParams();
+    if (filters?.category)
+      queryParams.append("category", filters.category);
+    if (filters?.location)
+      queryParams.append("location", filters.location);
+    if (filters?.sortBy) queryParams.append("sortBy", filters.sortBy);
+
+    const query = queryParams.toString()
+      ? `?${queryParams.toString()}`
+      : "";
+    return this.request<PantryItem[]>(`/pantry${query}`);
+  }
+
+  async getPantryStats(): Promise<PantryStats> {
+    return this.request<PantryStats>("/pantry/stats");
+  }
+
+  async getExpiringItems(days: number = 7): Promise<PantryItem[]> {
+    return this.request<PantryItem[]>(`/pantry/expiring?days=${days}`);
+  }
+
+  async searchPantryItems(query: string): Promise<PantryItem[]> {
+    return this.request<PantryItem[]>(
+      `/pantry/search?query=${encodeURIComponent(query)}`
+    );
+  }
+
+  async getPantryItem(itemId: string): Promise<PantryItem> {
+    return this.request<PantryItem>(`/pantry/${itemId}`);
+  }
+
+  async createPantryItem(
+    itemData: CreatePantryItemData
+  ): Promise<PantryItem> {
+    return this.request<PantryItem>("/pantry", {
       method: "POST",
-      body: JSON.stringify(itemData), // Fix: Stringify here
+      body: JSON.stringify(itemData),
+    });
+  }
+
+  async createPantryItemsBulk(
+    items: CreatePantryItemData[]
+  ): Promise<PantryItem[]> {
+    return this.request<PantryItem[]>("/pantry/bulk", {
+      method: "POST",
+      body: JSON.stringify({ items }),
+    });
+  }
+
+  async updatePantryItem(
+    itemId: string,
+    itemData: Partial<CreatePantryItemData>
+  ): Promise<PantryItem> {
+    return this.request<PantryItem>(`/pantry/${itemId}`, {
+      method: "PUT",
+      body: JSON.stringify(itemData),
+    });
+  }
+
+  async updatePantryItemQuantity(
+    itemId: string,
+    quantity: number
+  ): Promise<PantryItem> {
+    return this.request<PantryItem>(`/pantry/${itemId}/quantity`, {
+      method: "PATCH",
+      body: JSON.stringify({ quantity }),
+    });
+  }
+
+  async deletePantryItem(itemId: string): Promise<{ message: string }> {
+    return this.request<{ message: string }>(`/pantry/${itemId}`, {
+      method: "DELETE",
+    });
+  }
+
+  async deletePantryItemsBulk(
+    itemIds: string[]
+  ): Promise<{ message: string; deletedCount: number }> {
+    return this.request<{ message: string; deletedCount: number }>(
+      "/pantry/bulk/delete",
+      {
+        method: "DELETE",
+        body: JSON.stringify({ itemIds }),
+      }
+    );
+  }
+
+  async scanBarcode(barcode: string): Promise<{
+    success: boolean;
+    item: Partial<PantryItem>;
+    message: string;
+  }> {
+    return this.request("/pantry/barcode", {
+      method: "POST",
+      body: JSON.stringify({ barcode }),
     });
   }
 
