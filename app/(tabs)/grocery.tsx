@@ -1,6 +1,7 @@
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   Alert,
@@ -38,6 +39,7 @@ interface QuickAddItem {
 }
 
 export default function GroceryListPage() {
+  const router = useRouter();
   const [groceryList, setGroceryList] = useState<GroceryItem[]>([
     {
       id: "1",
@@ -370,7 +372,10 @@ export default function GroceryListPage() {
       {/* Header */}
       <ThemedView style={styles.header}>
         <ThemedView style={styles.headerLeft}>
-          <TouchableOpacity style={styles.backButton}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.navigate("/")}
+          >
             <Ionicons
               name={"chevron-back" as IoniconsName}
               size={24}
@@ -1046,7 +1051,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: "80%",
-    backgroundColor: "#ffffff", // For light mode
+    backgroundColor: "#ffffff",
   },
   modalHeader: {
     flexDirection: "row",

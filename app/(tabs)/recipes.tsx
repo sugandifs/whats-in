@@ -1,6 +1,7 @@
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   FlatList,
@@ -45,6 +46,7 @@ interface RecipeCategory {
 }
 
 export default function RecipesPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<
     "discover" | "yours" | "favorites"
   >("discover");
@@ -443,7 +445,10 @@ export default function RecipesPage() {
       {/* Header */}
       <ThemedView style={styles.header}>
         <ThemedView style={styles.headerLeft}>
-          <TouchableOpacity style={styles.backButton}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.navigate("/")}
+          >
             <Ionicons
               name={"chevron-back" as IoniconsName}
               size={24}

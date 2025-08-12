@@ -1,6 +1,7 @@
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   FlatList,
@@ -38,6 +39,7 @@ interface DayPlan {
 }
 
 export default function MealPlannerPage() {
+  const router = useRouter();
   const [selectedWeek, setSelectedWeek] = useState(0);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedDay, setSelectedDay] = useState<string>("");
@@ -375,7 +377,10 @@ export default function MealPlannerPage() {
       {/* Header */}
       <ThemedView style={styles.header}>
         <ThemedView style={styles.headerLeft}>
-          <TouchableOpacity style={styles.backButton}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.navigate("/")}
+          >
             <Ionicons
               name={"chevron-back" as IoniconsName}
               size={24}
@@ -453,6 +458,41 @@ export default function MealPlannerPage() {
           </ThemedView>
         </ThemedView>
 
+        {/* Quick Actions */}
+        <ThemedView style={styles.quickActions}>
+          <ThemedText type="subtitle" style={styles.quickActionsTitle}>
+            Quick Actions
+          </ThemedText>
+          <ThemedView style={styles.actionButtons}>
+            <TouchableOpacity style={styles.actionButton}>
+              <Ionicons
+                name={"restaurant" as IoniconsName}
+                size={20}
+                color={THEME_COLOR}
+              />
+              <ThemedText
+                type="defaultSemiBold"
+                style={styles.actionButtonText}
+              >
+                Generate Week
+              </ThemedText>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionButton}>
+              <Ionicons
+                name={"copy" as IoniconsName}
+                size={20}
+                color={THEME_COLOR}
+              />
+              <ThemedText
+                type="defaultSemiBold"
+                style={styles.actionButtonText}
+              >
+                Copy Last Week
+              </ThemedText>
+            </TouchableOpacity>
+          </ThemedView>
+        </ThemedView>
+
         {/* Daily Meal Plans */}
         <ThemedView style={styles.daysContainer}>
           {weekPlans.map((day, index) => (
@@ -499,41 +539,6 @@ export default function MealPlannerPage() {
               </ThemedView>
             </ThemedView>
           ))}
-        </ThemedView>
-
-        {/* Quick Actions */}
-        <ThemedView style={styles.quickActions}>
-          <ThemedText type="subtitle" style={styles.quickActionsTitle}>
-            Quick Actions
-          </ThemedText>
-          <ThemedView style={styles.actionButtons}>
-            <TouchableOpacity style={styles.actionButton}>
-              <Ionicons
-                name={"restaurant" as IoniconsName}
-                size={20}
-                color={THEME_COLOR}
-              />
-              <ThemedText
-                type="defaultSemiBold"
-                style={styles.actionButtonText}
-              >
-                Generate Week
-              </ThemedText>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionButton}>
-              <Ionicons
-                name={"copy" as IoniconsName}
-                size={20}
-                color={THEME_COLOR}
-              />
-              <ThemedText
-                type="defaultSemiBold"
-                style={styles.actionButtonText}
-              >
-                Copy Last Week
-              </ThemedText>
-            </TouchableOpacity>
-          </ThemedView>
         </ThemedView>
       </ScrollView>
 
@@ -758,7 +763,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   quickActions: {
-    marginBottom: 100,
+    marginBottom: 20,
     backgroundColor: "transparent",
   },
   quickActionsTitle: {
@@ -797,7 +802,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
     maxHeight: "70%",
     paddingTop: 20,
-    backgroundColor: "#ffffff", // For light mode
+    backgroundColor: "#ffffff",
   },
   modalHeader: {
     flexDirection: "row",

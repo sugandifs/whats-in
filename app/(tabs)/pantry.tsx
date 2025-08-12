@@ -1,6 +1,7 @@
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   Alert,
@@ -42,6 +43,7 @@ interface PantryCategory {
 }
 
 export default function PantryPage() {
+  const router = useRouter();
   const [activeView, setActiveView] = useState<"grid" | "list">("grid");
   const [selectedCategory, setSelectedCategory] =
     useState<string>("all");
@@ -402,7 +404,10 @@ export default function PantryPage() {
       {/* Header */}
       <ThemedView style={styles.header}>
         <ThemedView style={styles.headerLeft}>
-          <TouchableOpacity style={styles.backButton}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.navigate("/")}
+          >
             <Ionicons
               name={"chevron-back" as IoniconsName}
               size={24}
@@ -463,14 +468,6 @@ export default function PantryPage() {
           </ThemedText>
           <ThemedText type="default" style={styles.statLabel}>
             Expiring Soon
-          </ThemedText>
-        </ThemedView>
-        <ThemedView style={styles.statCard}>
-          <ThemedText type="default" style={styles.statNumber}>
-            6
-          </ThemedText>
-          <ThemedText type="default" style={styles.statLabel}>
-            Categories
           </ThemedText>
         </ThemedView>
       </ThemedView>
