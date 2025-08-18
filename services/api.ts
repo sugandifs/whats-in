@@ -102,7 +102,7 @@ class ApiService {
   async createRecipe(recipeData: CreateRecipeData): Promise<Recipe> {
     return this.request<Recipe>("/recipes", {
       method: "POST",
-      body: JSON.stringify(recipeData), // Fix: Stringify here
+      body: JSON.stringify(recipeData),
     });
   }
 
@@ -112,7 +112,7 @@ class ApiService {
   ): Promise<Recipe> {
     return this.request<Recipe>(`/recipes/${recipeId}`, {
       method: "PUT",
-      body: JSON.stringify(recipeData), // Fix: Stringify here
+      body: JSON.stringify(recipeData),
     });
   }
 
@@ -137,6 +137,20 @@ class ApiService {
   async removeFromFavorites(recipeId: string): Promise<Recipe> {
     return this.request<Recipe>(`/recipes/${recipeId}/favorite`, {
       method: "DELETE",
+    });
+  }
+
+  async generateRecipe(generationData: {
+    selectedIngredients?: string[];
+    cuisine?: string;
+    style?: string;
+    prepTime?: string;
+    dietaryRestrictions?: string[];
+    additionalPrompt?: string;
+  }): Promise<Recipe> {
+    return this.request<Recipe>("/recipes/generate", {
+      method: "POST",
+      body: JSON.stringify(generationData),
     });
   }
 

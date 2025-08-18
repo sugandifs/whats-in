@@ -273,9 +273,9 @@ export default function RecipesPage() {
   };
 
   const handleRecipePress = (recipe: Recipe) => {
-    // TODO: Navigate to recipe detail page
-    console.log("Navigate to recipe:", recipe._id);
-    // router.push(`/recipe/${recipe._id}`);
+    console.log("Navigating to recipe:", recipe._id);
+    console.log("route is: ", `/recipe/${recipe._id}`);
+    router.push(`/recipe/${recipe._id}` as any);
   };
 
   const renderRecipeCard = ({ item }: { item: Recipe }) => (
@@ -474,7 +474,7 @@ export default function RecipesPage() {
               borderColor: THEME_COLOR,
             },
           ]}
-          onPress={() => setGenerateModalVisible(true)}
+          onPress={() => router.navigate("/generate-recipe")}
         >
           <Ionicons
             name={"sparkles" as IoniconsName}
