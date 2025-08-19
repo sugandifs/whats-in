@@ -129,15 +129,25 @@ class ApiService {
   }
 
   async addToFavorites(recipeId: string): Promise<Recipe> {
-    return this.request<Recipe>(`/recipes/${recipeId}/favorite`, {
-      method: "POST",
-    });
+    const result = this.request<Recipe>(
+      `/recipes/${recipeId}/favorite`,
+      {
+        method: "POST",
+      }
+    );
+    console.log("addToFavorites API result:", result);
+    return result;
   }
 
   async removeFromFavorites(recipeId: string): Promise<Recipe> {
-    return this.request<Recipe>(`/recipes/${recipeId}/favorite`, {
-      method: "DELETE",
-    });
+    const result = this.request<Recipe>(
+      `/recipes/${recipeId}/favorite`,
+      {
+        method: "DELETE",
+      }
+    );
+    console.log("removeFromFavorites API result:", result);
+    return result;
   }
 
   async generateRecipe(generationData: {

@@ -81,18 +81,33 @@ export default function RecipeDetailPage() {
     }
   }, [currentUser, id]);
 
-  const toggleFavorite = async () => {
-    if (!recipe) return;
+  const handleToggleFavorite = async (
+    recipeId: string,
+    currentIsFavorite: boolean
+  ) => {
+    // Optimistic update - immediately update UI
+    const newFavoriteStatus = !currentIsFavorite;
+    setIsFavorite(newFavoriteStatus);
 
     try {
-      if (isFavorite) {
-        await ApiService.removeFromFavorites(recipe._id);
+      console.log(
+        `Toggling favorite for recipe ${recipeId}: ${
+          currentIsFavorite ? "removing" : "adding"
+        }`
+      );
+
+      if (currentIsFavorite) {
+        await ApiService.removeFromFavorites(recipeId);
+        console.log("Successfully removed from favorites");
       } else {
-        await ApiService.addToFavorites(recipe._id);
+        await ApiService.addToFavorites(recipeId);
+        console.log("Successfully added to favorites");
       }
-      setIsFavorite(!isFavorite);
     } catch (error) {
       console.error("Failed to toggle favorite:", error);
+
+      setIsFavorite(currentIsFavorite);
+
       Alert.alert("Error", "Failed to update favorite status.");
     }
   };
@@ -248,7 +263,7 @@ export default function RecipeDetailPage() {
 
           <TouchableOpacity
             style={styles.headerButton}
-            onPress={toggleFavorite}
+            onPress={() => handleToggleFavorite(recipe._id, isFavorite)}
           >
             <Ionicons
               name={isFavorite ? "heart" : "heart-outline"}

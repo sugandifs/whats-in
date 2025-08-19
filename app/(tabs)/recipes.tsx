@@ -121,21 +121,18 @@ export default function RecipesPage() {
     try {
       setLoading(true);
 
-      // Load all recipes
-      const recipes = await ApiService.getRecipes();
-      setAllRecipes(recipes);
-
-      // Load user's own recipes
       if (currentUser) {
-        // TODO: change to a getUserGeneratedRecipes endpoint later
-        const ownRecipes = await ApiService.getRecipes();
-        setUserRecipes(ownRecipes);
-      }
+        // Load all data in parallel
+        const [allRecipesData, userRecipesData, favoritesData] =
+          await Promise.all([
+            ApiService.getRecipes(), // This should return all user's recipes with favorite status
+            ApiService.getRecipes(), // User's own recipes (same endpoint for now)
+            ApiService.getFavoriteRecipes(), // User's favorite recipes
+          ]);
 
-      // Load favorite recipes
-      if (currentUser) {
-        const favorites = await ApiService.getFavoriteRecipes();
-        setFavoriteRecipes(favorites);
+        setAllRecipes(allRecipesData);
+        setUserRecipes(userRecipesData);
+        setFavoriteRecipes(favoritesData);
       }
     } catch (error) {
       console.error("Failed to load recipes:", error);
@@ -202,9 +199,9 @@ export default function RecipesPage() {
   ) => {
     try {
       if (isFavorite) {
-        await ApiService.addToFavorites(recipeId);
+        const result = await ApiService.removeFromFavorites(recipeId);
       } else {
-        await ApiService.removeFromFavorites(recipeId);
+        const result = await ApiService.addToFavorites(recipeId);
       }
 
       await loadData();
@@ -251,9 +248,6 @@ export default function RecipesPage() {
 
     try {
       setLoading(true);
-      // TODO: Implement recipe generation in backend
-      // const newRecipe = await ApiService.generateRecipe(generatePrompt);
-
       console.log("Generating recipe with prompt:", generatePrompt);
       setGeneratePrompt("");
       setGenerateModalVisible(false);
@@ -299,7 +293,7 @@ export default function RecipesPage() {
         <TouchableOpacity
           style={styles.favoriteButton}
           onPress={() =>
-            handleToggleFavorite(item._id, !item.isFavorite)
+            handleToggleFavorite(item._id, item.isFavorite)
           }
         >
           <Ionicons
