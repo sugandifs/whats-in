@@ -4,7 +4,7 @@
  */
 
 const tintColorLight = "#FFB902";
-const tintColorDark = "#fff";
+const tintColorDark = "#FFB902";
 
 export const Colors = {
   light: {
@@ -14,6 +14,15 @@ export const Colors = {
     icon: "#687076",
     tabIconDefault: "#687076",
     tabIconSelected: tintColorLight,
+    // Add more semantic colors
+    textSecondary: "#6b7280",
+    textTertiary: "#9ca3af",
+    backgroundSecondary: "#ffffff",
+    backgroundTertiary: "#f3f4f6",
+    border: "rgba(128, 128, 128, 0.2)",
+    borderMedium: "rgba(128, 128, 128, 0.3)",
+    borderDark: "#e5e7eb",
+    overlay: "rgba(0, 0, 0, 0.5)",
   },
   dark: {
     text: "#ECEDEE",
@@ -22,5 +31,18 @@ export const Colors = {
     icon: "#9BA1A6",
     tabIconDefault: "#9BA1A6",
     tabIconSelected: tintColorDark,
+    // Dark mode equivalents
+    textSecondary: "#9BA1A6",
+    textTertiary: "#6b7280",
+    backgroundSecondary: "#1a1a1a",
+    backgroundTertiary: "#333333",
+    border: "#444444",
+    borderMedium: "#555555",
+    borderDark: "#666666",
+    overlay: "rgba(0, 0, 0, 0.7)",
   },
+};
+
+export const getColors = (colorScheme: "light" | "dark" | null) => {
+  return Colors[colorScheme ?? "light"];
 };

@@ -150,6 +150,13 @@ class ApiService {
     return result;
   }
 
+  async importRecipe(url: string): Promise<Recipe> {
+    return this.request<Recipe>("/recipes/import", {
+      method: "POST",
+      body: JSON.stringify({ url }),
+    });
+  }
+
   async generateRecipe(generationData: {
     selectedIngredients?: string[];
     cuisine?: string;
@@ -276,7 +283,7 @@ class ApiService {
   async createMealPlan(planData: any): Promise<any> {
     return this.request<any>("/meal-plans", {
       method: "POST",
-      body: JSON.stringify(planData), // Fix: Stringify here
+      body: JSON.stringify(planData),
     });
   }
 }

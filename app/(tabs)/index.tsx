@@ -1,27 +1,27 @@
+import { FormInput } from "@/components/forms/FormInput";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
+import { ActionButton } from "@/components/ui/ActionButton";
+import { Header } from "@/components/ui/Header";
+import { HeaderAction } from "@/components/ui/HeaderActions";
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { Modal } from "@/components/ui/Modal";
 import { useAuth } from "@/context/AuthContext";
+import { useThemedStyles } from "@/hooks/useThemedStyles";
 import ApiService from "@/services/api";
 import { Recipe } from "@/services/types";
-import { Ionicons } from "@expo/vector-icons";
+import { styles } from "@/styles";
+import { homePageStyles } from "@/styles/pages";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
-  Modal,
   RefreshControl,
   SafeAreaView,
   ScrollView,
   StatusBar,
-  StyleSheet,
-  TextInput,
   TouchableOpacity,
-  useColorScheme,
 } from "react-native";
-type IoniconsName = keyof typeof Ionicons.glyphMap;
-
-const THEME_COLOR = "#FFB902";
 
 interface PantryItem {
   id: string;
@@ -37,33 +37,30 @@ interface PantryItem {
   barcode?: string;
 }
 
-interface PantryCategory {
-  id: string;
-  name: string;
-  icon: string;
-  color: string;
-  count: number;
+interface QuickAction {
+  icon: keyof typeof import("@expo/vector-icons").Ionicons.glyphMap;
+  label: string;
+  action: string;
 }
 
-interface QuickStat {
-  label: string;
-  value: string | number;
-  icon: IoniconsName;
+interface ExpiringItem {
+  name: string;
+  days: number;
 }
 
 export default function MealPrepHome() {
   const router = useRouter();
   const { currentUser } = useAuth();
-  const [activeTab, setActiveTab] = useState("home");
-  const colorScheme = useColorScheme();
-  const [addItemModalVisible, setAddItemModalVisible] = useState(false);
+  const { themedColors, theme } = useThemedStyles();
+
+  // State management
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [addItemModalVisible, setAddItemModalVisible] = useState(false);
 
   // Data states
   const [recentRecipes, setRecentRecipes] = useState<Recipe[]>([]);
   const [pantryItems, setPantryItems] = useState<PantryItem[]>([]);
-  const [quickStats, setQuickStats] = useState<QuickStat[]>([]);
 
   // Form state for adding new items
   const [newItem, setNewItem] = useState({
@@ -77,78 +74,15 @@ export default function MealPrepHome() {
     notes: "",
   });
 
-  const categories: PantryCategory[] = [
-    {
-      id: "all",
-      name: "All Items",
-      icon: "grid",
-      color: THEME_COLOR,
-      count: pantryItems.length,
-    },
-    {
-      id: "fresh",
-      name: "Fresh",
-      icon: "leaf",
-      color: "#22c55e",
-      count: pantryItems.filter((item) => item.category === "fresh")
-        .length,
-    },
-    {
-      id: "dairy",
-      name: "Dairy",
-      icon: "water",
-      color: "#3b82f6",
-      count: pantryItems.filter((item) => item.category === "dairy")
-        .length,
-    },
-    {
-      id: "meat",
-      name: "Meat & Fish",
-      icon: "fish",
-      color: "#ef4444",
-      count: pantryItems.filter((item) => item.category === "meat")
-        .length,
-    },
-    {
-      id: "pantry",
-      name: "Pantry",
-      icon: "archive",
-      color: "#8b5cf6",
-      count: pantryItems.filter((item) => item.category === "pantry")
-        .length,
-    },
-    {
-      id: "frozen",
-      name: "Frozen",
-      icon: "snow",
-      color: "#06b6d4",
-      count: pantryItems.filter((item) => item.category === "frozen")
-        .length,
-    },
-  ];
-
-  const locations = [
-    { id: "fridge", name: "Refrigerator", icon: "snow" },
-    { id: "freezer", name: "Freezer", icon: "cube" },
-    { id: "pantry", name: "Pantry", icon: "archive" },
-    { id: "counter", name: "Counter", icon: "home" },
-  ];
-
-  const units = [
-    "piece",
-    "lb",
-    "kg",
-    "oz",
-    "g",
-    "cup",
-    "tbsp",
-    "tsp",
-    "bottle",
-    "package",
+  const quickActions: QuickAction[] = [
+    { icon: "add", label: "Add Inventory", action: "add" },
+    { icon: "cart", label: "Grocery List", action: "grocery" },
+    { icon: "calendar", label: "Meal Planner", action: "mealprep" },
+    { icon: "book", label: "My Recipes", action: "recipes" },
   ];
 
   // Calculate expiring items
-  const getExpiringItems = () => {
+  const getExpiringItems = (): ExpiringItem[] => {
     return pantryItems
       .filter((item) => {
         const daysUntilExpiration = Math.ceil(
@@ -167,94 +101,67 @@ export default function MealPrepHome() {
       }));
   };
 
-  const quickActions = [
-    {
-      icon: "add" as IoniconsName,
-      label: "Add Inventory",
-      action: "add",
-    },
-    {
-      icon: "cart" as IoniconsName,
-      label: "Grocery List",
-      action: "grocery",
-    },
-    {
-      icon: "calendar" as IoniconsName,
-      label: "Meal Planner",
-      action: "mealprep",
-    },
-    {
-      icon: "book" as IoniconsName,
-      label: "My Recipes",
-      action: "recipes",
-    },
-  ];
-
-  const navigationTabs = [
-    { id: "home", icon: "home" as IoniconsName, label: "Home" },
-    { id: "recipes", icon: "book" as IoniconsName, label: "Recipes" },
-    { id: "plan", icon: "calendar" as IoniconsName, label: "Plan" },
-    {
-      id: "inventory",
-      icon: "add-circle" as IoniconsName,
-      label: "Inventory",
-    },
-  ];
-
   // Load data from backend
   const loadData = async () => {
     try {
       setLoading(true);
 
-      // Load recipes (recent ones)
-      const recipes = await ApiService.getRecipes();
-      setRecentRecipes(recipes.slice(0, 3)); // Get first 3 for recent recipes
+      if (currentUser) {
+        // Load recipes (recent ones)
+        const recipes = await ApiService.getRecipes();
+        setRecentRecipes(recipes.slice(0, 3));
 
-      // Load pantry items (you'll need to implement this endpoint)
-      // For now, using mock data but structure is ready for backend
-      const mockPantryItems: PantryItem[] = [
-        {
-          id: "1",
-          name: "Spinach",
-          category: "fresh",
-          quantity: 1,
-          unit: "package",
-          expirationDate: new Date(
-            Date.now() + 2 * 24 * 60 * 60 * 1000
-          ),
-          purchaseDate: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-          location: "fridge",
-          emoji: "🥬",
-          notes: "Organic baby spinach",
-        },
-        {
-          id: "2",
-          name: "Bell Peppers",
-          category: "fresh",
-          quantity: 3,
-          unit: "piece",
-          expirationDate: new Date(
-            Date.now() + 3 * 24 * 60 * 60 * 1000
-          ),
-          purchaseDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-          location: "fridge",
-          emoji: "🫑",
-        },
-        {
-          id: "3",
-          name: "Greek Yogurt",
-          category: "dairy",
-          quantity: 1,
-          unit: "package",
-          expirationDate: new Date(
-            Date.now() + 4 * 24 * 60 * 60 * 1000
-          ),
-          purchaseDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-          location: "fridge",
-          emoji: "🥛",
-        },
-      ];
-      setPantryItems(mockPantryItems);
+        // Mock pantry items for now (replace with actual API call)
+        const mockPantryItems: PantryItem[] = [
+          {
+            id: "1",
+            name: "Spinach",
+            category: "fresh",
+            quantity: 1,
+            unit: "package",
+            expirationDate: new Date(
+              Date.now() + 2 * 24 * 60 * 60 * 1000
+            ),
+            purchaseDate: new Date(
+              Date.now() - 3 * 24 * 60 * 60 * 1000
+            ),
+            location: "fridge",
+            emoji: "🥬",
+            notes: "Organic baby spinach",
+          },
+          {
+            id: "2",
+            name: "Bell Peppers",
+            category: "fresh",
+            quantity: 3,
+            unit: "piece",
+            expirationDate: new Date(
+              Date.now() + 3 * 24 * 60 * 60 * 1000
+            ),
+            purchaseDate: new Date(
+              Date.now() - 2 * 24 * 60 * 60 * 1000
+            ),
+            location: "fridge",
+            emoji: "🫑",
+          },
+          {
+            id: "3",
+            name: "Greek Yogurt",
+            category: "dairy",
+            quantity: 1,
+            unit: "package",
+            expirationDate: new Date(
+              Date.now() + 4 * 24 * 60 * 60 * 1000
+            ),
+            purchaseDate: new Date(
+              Date.now() - 1 * 24 * 60 * 60 * 1000
+            ),
+            location: "fridge",
+            emoji: "🥛",
+          },
+        ];
+        setPantryItems(mockPantryItems);
+      }
     } catch (error) {
       console.error("Failed to load data:", error);
       Alert.alert("Error", "Failed to load data. Please try again.");
@@ -282,19 +189,6 @@ export default function MealPrepHome() {
     }
 
     try {
-      // TODO: Implement pantry item creation in backend
-      // const newPantryItem = await ApiService.createPantryItem({
-      //   name: newItem.name,
-      //   category: newItem.category,
-      //   quantity: newItem.quantity,
-      //   unit: newItem.unit,
-      //   expirationDate: newItem.expirationDate,
-      //   location: newItem.location,
-      //   emoji: newItem.emoji,
-      //   notes: newItem.notes,
-      // });
-
-      // For now, add locally
       const item: PantryItem = {
         id: Date.now().toString(),
         name: newItem.name,
@@ -309,7 +203,6 @@ export default function MealPrepHome() {
       };
 
       setPantryItems([...pantryItems, item]);
-
       setNewItem({
         name: "",
         category: "fresh",
@@ -343,8 +236,7 @@ export default function MealPrepHome() {
           {
             text: "Generate",
             onPress: () => {
-              // TODO: Implement recipe generation with pantry items
-              router.push("/recipes");
+              router.push("/generate-recipe");
             },
           },
         ]
@@ -381,103 +273,77 @@ export default function MealPrepHome() {
   };
 
   if (loading) {
-    return (
-      <SafeAreaView
-        style={[
-          styles.container,
-          { justifyContent: "center", alignItems: "center" },
-        ]}
-      >
-        <ActivityIndicator size="large" color={THEME_COLOR} />
-        <ThemedText style={{ marginTop: 16 }}>
-          Loading your kitchen...
-        </ThemedText>
-      </SafeAreaView>
-    );
+    return <LoadingSpinner message="Loading your kitchen..." />;
   }
+
+  const expiringItems = getExpiringItems();
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar
         barStyle={
-          colorScheme === "dark" ? "light-content" : "dark-content"
+          themedColors.text === "#1A1A21"
+            ? "dark-content"
+            : "light-content"
         }
       />
 
-      {/* Header */}
-      <ThemedView style={styles.header}>
-        <ThemedView style={styles.headerLeft}>
-          <ThemedView style={styles.logoContainer}>
-            <Ionicons
-              name={"restaurant" as IoniconsName}
-              size={24}
-              color="white"
+      <Header
+        title="what's in"
+        subtitle="your pantry, your chef"
+        showBack={false}
+        rightActions={
+          <>
+            <HeaderAction
+              icon="search"
+              onPress={() => router.push("/recipes")}
             />
-          </ThemedView>
-          <ThemedView style={styles.headerText}>
-            <ThemedText type="title" style={styles.headerTitle}>
-              what's in
-            </ThemedText>
-            <ThemedText type="default" style={styles.headerSubtitle}>
-              your pantry, your chef
-            </ThemedText>
-          </ThemedView>
-        </ThemedView>
-        <ThemedView style={styles.headerRight}>
-          <TouchableOpacity
-            style={styles.headerButton}
-            onPress={() => router.push("/recipes")}
-          >
-            <Ionicons
-              name={"search" as IoniconsName}
-              size={20}
-              color={colorScheme === "dark" ? "#fff" : "#666"}
+            <HeaderAction
+              icon="notifications"
+              onPress={() => console.log("notifications")}
             />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.headerButton}>
-            <Ionicons
-              name={"notifications" as IoniconsName}
-              size={20}
-              color={colorScheme === "dark" ? "#fff" : "#666"}
-            />
-            {getExpiringItems().length > 0 && (
-              <ThemedView style={styles.notificationDot} />
-            )}
-          </TouchableOpacity>
-        </ThemedView>
-      </ThemedView>
+          </>
+        }
+      />
 
       <ScrollView
-        style={styles.content}
+        style={{ ...styles.container, padding: theme.spacing.lg }}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
+            colors={[themedColors.primary]}
           />
         }
       >
         {/* Welcome Section */}
-        <ThemedView style={styles.welcomeContainer}>
-          <ThemedText type="title" style={styles.welcomeTitle}>
+        <ThemedView
+          style={[
+            homePageStyles.welcomeContainer,
+            { backgroundColor: themedColors.primary },
+          ]}
+        >
+          <ThemedText type="title" style={homePageStyles.welcomeTitle}>
             Good morning, {getUserFirstName()}!
           </ThemedText>
-          <ThemedText type="default" style={styles.welcomeSubtitle}>
+          <ThemedText
+            type="default"
+            style={homePageStyles.welcomeSubtitle}
+          >
             Ready to create something delicious with what you have?
           </ThemedText>
           <TouchableOpacity
-            style={styles.generateButton}
+            style={homePageStyles.generateButton}
             onPress={generateRecipeWithPantry}
           >
-            <Ionicons
-              name={"add" as IoniconsName}
-              size={20}
-              color="#333"
-              style={styles.generateButtonIcon}
-            />
             <ThemedText
-              type="defaultSemiBold"
-              style={styles.generateButtonText}
+              style={{
+                fontSize: theme.typography.sizes.lg,
+                fontWeight: theme.typography.weights.semibold,
+                color: "#1A1A21",
+                marginLeft: theme.spacing.sm,
+              }}
             >
               Generate Recipe
             </ThemedText>
@@ -485,23 +351,40 @@ export default function MealPrepHome() {
         </ThemedView>
 
         {/* Quick Actions */}
-        <ThemedView style={styles.quickActionsContainer}>
+        <ThemedView style={homePageStyles.quickActionsContainer}>
           {quickActions.map((action, index) => (
             <TouchableOpacity
               key={index}
-              style={styles.quickActionCard}
+              style={[
+                homePageStyles.quickActionCard,
+                {
+                  backgroundColor: themedColors.backgroundSecondary,
+                  borderColor: themedColors.border,
+                },
+              ]}
               onPress={() => handleQuickAction(action.action)}
             >
-              <ThemedView style={styles.quickActionIcon}>
-                <Ionicons
-                  name={action.icon as IoniconsName}
-                  size={24}
-                  color={THEME_COLOR}
-                />
+              <ThemedView
+                style={[
+                  homePageStyles.quickActionIcon,
+                  { backgroundColor: `${themedColors.primary}20` },
+                ]}
+              >
+                <ThemedText style={{ fontSize: 24 }}>
+                  {action.icon === "add"
+                    ? "+"
+                    : action.icon === "cart"
+                    ? "🛒"
+                    : action.icon === "calendar"
+                    ? "📅"
+                    : "📖"}
+                </ThemedText>
               </ThemedView>
               <ThemedText
-                type="defaultSemiBold"
-                style={styles.quickActionText}
+                style={[
+                  homePageStyles.quickActionText,
+                  { color: themedColors.text },
+                ]}
               >
                 {action.label}
               </ThemedText>
@@ -509,13 +392,20 @@ export default function MealPrepHome() {
           ))}
         </ThemedView>
 
-        <ThemedView style={styles.mainContent}>
+        {/* Main Content */}
+        <ThemedView style={homePageStyles.mainContent}>
           {/* Recent Recipes */}
-          <ThemedView style={styles.recentRecipesContainer}>
-            <ThemedView style={styles.sectionHeader}>
+          <ThemedView style={{ marginBottom: theme.spacing.xxl }}>
+            <ThemedView style={homePageStyles.sectionHeader}>
               <ThemedText type="subtitle">Recent Recipes</ThemedText>
               <TouchableOpacity onPress={() => router.push("/recipes")}>
-                <ThemedText type="link" style={styles.viewAllButton}>
+                <ThemedText
+                  type="link"
+                  style={[
+                    homePageStyles.viewAllButton,
+                    { color: themedColors.primary },
+                  ]}
+                >
                   View All
                 </ThemedText>
               </TouchableOpacity>
@@ -525,69 +415,93 @@ export default function MealPrepHome() {
               recentRecipes.map((recipe) => (
                 <TouchableOpacity
                   key={recipe._id}
-                  style={styles.recipeCard}
-                  onPress={() => {
-                    // TODO: Navigate to recipe detail
-                    console.log("Navigate to recipe:", recipe._id);
-                  }}
+                  style={[
+                    styles.card,
+                    {
+                      backgroundColor: themedColors.backgroundSecondary,
+                      borderColor: themedColors.border,
+                      marginBottom: theme.spacing.md,
+                      padding: theme.spacing.lg,
+                      flexDirection: "row",
+                      alignItems: "center",
+                    },
+                  ]}
+                  onPress={() =>
+                    router.push(`/recipe/${recipe._id}` as any)
+                  }
                 >
-                  <ThemedText style={styles.recipeEmoji}>
+                  <ThemedText
+                    style={{
+                      fontSize: 32,
+                      marginRight: theme.spacing.lg,
+                    }}
+                  >
                     {recipe.image || "🍽️"}
                   </ThemedText>
-                  <ThemedView style={styles.recipeInfo}>
+                  <ThemedView
+                    style={{ flex: 1, backgroundColor: "transparent" }}
+                  >
                     <ThemedText
                       type="defaultSemiBold"
-                      style={styles.recipeName}
+                      style={{ marginBottom: 4 }}
                     >
                       {recipe.name}
                     </ThemedText>
-                    <ThemedView style={styles.recipeDetails}>
-                      <ThemedView style={styles.recipeDetailItem}>
-                        <Ionicons
-                          name={"time" as IoniconsName}
-                          size={16}
-                          color={
-                            colorScheme === "dark" ? "#fff" : "#666"
-                          }
-                        />
+                    <ThemedView
+                      style={{
+                        ...styles.row,
+                        backgroundColor: "transparent",
+                      }}
+                    >
+                      <ThemedView
+                        style={[
+                          styles.row,
+                          {
+                            marginRight: theme.spacing.lg,
+                            backgroundColor: "transparent",
+                          },
+                        ]}
+                      >
                         <ThemedText
-                          type="default"
-                          style={styles.recipeDetailText}
+                          style={{
+                            fontSize: 14,
+                            opacity: 0.7,
+                            marginLeft: 4,
+                            backgroundColor: "transparent",
+                          }}
                         >
                           {recipe.prepTime}
                         </ThemedText>
                       </ThemedView>
-                      <ThemedView style={styles.recipeDetailItem}>
-                        <Ionicons
-                          name={"star" as IoniconsName}
-                          size={16}
-                          color={THEME_COLOR}
-                        />
-                        <ThemedText
-                          type="defaultSemiBold"
-                          style={styles.recipeRating}
-                        >
-                          {recipe.rating}
-                        </ThemedText>
-                      </ThemedView>
                     </ThemedView>
                   </ThemedView>
-                  <TouchableOpacity style={styles.recipeAction}>
-                    <Ionicons
-                      name={"heart" as IoniconsName}
-                      size={20}
-                      color={recipe.isFavorite ? "#ef4444" : "#999"}
-                    />
+                  <TouchableOpacity
+                    style={{ padding: theme.spacing.sm }}
+                  >
+                    <ThemedText style={{ fontSize: 20 }}>
+                      {recipe.isFavorite ? "❤️" : "🤍"}
+                    </ThemedText>
                   </TouchableOpacity>
                 </TouchableOpacity>
               ))
             ) : (
-              <ThemedView style={styles.emptyState}>
-                <Ionicons
-                  name={"book-outline" as IoniconsName}
-                  size={48}
-                  color={colorScheme === "dark" ? "#666" : "#ccc"}
-                />
+              <ThemedView
+                style={[
+                  styles.emptyState,
+                  {
+                    backgroundColor: themedColors.backgroundTertiary,
+                    borderColor: themedColors.border,
+                  },
+                ]}
+              >
+                <ThemedText
+                  style={{
+                    fontSize: 48,
+                    marginBottom: theme.spacing.lg,
+                  }}
+                >
+                  📖
+                </ThemedText>
                 <ThemedText style={styles.emptyText}>
                   No recipes yet
                 </ThemedText>
@@ -601,30 +515,59 @@ export default function MealPrepHome() {
           </ThemedView>
 
           {/* Sidebar Content */}
-          <ThemedView style={styles.sidebar}>
+          <ThemedView style={homePageStyles.sidebar}>
             {/* Expiring Soon */}
-            <ThemedView style={styles.sidebarCard}>
-              <ThemedView style={styles.expiringSoonHeader}>
-                <ThemedView style={styles.expiringDot} />
-                <ThemedText
-                  type="defaultSemiBold"
-                  style={styles.sidebarCardTitle}
-                >
+            <ThemedView
+              style={[
+                homePageStyles.sidebarCard,
+                {
+                  backgroundColor: themedColors.backgroundSecondary,
+                  borderColor: themedColors.border,
+                },
+              ]}
+            >
+              <ThemedView
+                style={[
+                  styles.row,
+                  {
+                    marginBottom: theme.spacing.md,
+                    backgroundColor: "transparent",
+                  },
+                ]}
+              >
+                <ThemedView
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: 4,
+                    backgroundColor: themedColors.error,
+                    marginRight: theme.spacing.sm,
+                  }}
+                />
+                <ThemedText type="defaultSemiBold">
                   Expiring Soon
                 </ThemedText>
               </ThemedView>
-              {getExpiringItems().length > 0 ? (
-                getExpiringItems().map((item, index) => (
-                  <ThemedView key={index} style={styles.expiringItem}>
-                    <ThemedText
-                      type="default"
-                      style={styles.expiringItemName}
-                    >
+
+              {expiringItems.length > 0 ? (
+                expiringItems.map((item, index) => (
+                  <ThemedView
+                    key={index}
+                    style={[
+                      styles.rowBetween,
+                      { marginBottom: theme.spacing.sm },
+                      { backgroundColor: "transparent" },
+                    ]}
+                  >
+                    <ThemedText style={{ fontSize: 14 }}>
                       {item.name}
                     </ThemedText>
                     <ThemedText
-                      type="defaultSemiBold"
-                      style={styles.expiringItemDays}
+                      style={{
+                        fontSize: 14,
+                        fontWeight: theme.typography.weights.medium,
+                        color: themedColors.error,
+                      }}
                     >
                       {item.days}d
                     </ThemedText>
@@ -635,682 +578,120 @@ export default function MealPrepHome() {
                   All items are fresh!
                 </ThemedText>
               )}
+
               <TouchableOpacity
-                style={styles.sidebarButton}
+                style={{
+                  marginTop: theme.spacing.md,
+                  alignItems: "center",
+                }}
                 onPress={() => router.push("/pantry")}
               >
-                <ThemedText
-                  type="link"
-                  style={styles.sidebarButtonText}
-                >
-                  Manage Pantry
-                </ThemedText>
+                <ThemedText type="link">Manage Pantry</ThemedText>
               </TouchableOpacity>
             </ThemedView>
 
             {/* This Week's Plan */}
-            <ThemedView style={styles.sidebarCard}>
+            <ThemedView
+              style={[
+                homePageStyles.sidebarCard,
+                {
+                  backgroundColor: themedColors.backgroundSecondary,
+                  borderColor: themedColors.border,
+                },
+              ]}
+            >
               <ThemedText
                 type="defaultSemiBold"
-                style={styles.sidebarCardTitle}
+                style={{ marginBottom: theme.spacing.md }}
               >
                 This Week's Plan
               </ThemedText>
-              <ThemedView style={styles.weekPlanItem}>
-                <ThemedText type="default" style={styles.weekDay}>
-                  Mon
-                </ThemedText>
-                <ThemedText type="default" style={styles.weekMealEmpty}>
-                  Not planned
-                </ThemedText>
-              </ThemedView>
-              <ThemedView style={styles.weekPlanItem}>
-                <ThemedText type="default" style={styles.weekDay}>
-                  Tue
-                </ThemedText>
-                <ThemedText type="default" style={styles.weekMealEmpty}>
-                  Not planned
-                </ThemedText>
-              </ThemedView>
-              <ThemedView style={styles.weekPlanItem}>
-                <ThemedText type="default" style={styles.weekDay}>
-                  Wed
-                </ThemedText>
-                <ThemedText type="default" style={styles.weekMealEmpty}>
-                  Not planned
-                </ThemedText>
-              </ThemedView>
+
+              {["Mon", "Tue", "Wed"].map((day) => (
+                <ThemedView
+                  key={day}
+                  style={[
+                    styles.rowBetween,
+                    {
+                      marginBottom: theme.spacing.sm,
+                      backgroundColor: "transparent",
+                    },
+                  ]}
+                >
+                  <ThemedText style={{ fontSize: 14 }}>
+                    {day}
+                  </ThemedText>
+                  <ThemedText
+                    style={{
+                      fontSize: 14,
+                      opacity: 0.7,
+                    }}
+                  >
+                    Not planned
+                  </ThemedText>
+                </ThemedView>
+              ))}
+
               <TouchableOpacity
-                style={styles.sidebarButton}
+                style={{
+                  marginTop: theme.spacing.md,
+                  alignItems: "center",
+                }}
                 onPress={() => router.push("/planner")}
               >
-                <ThemedText
-                  type="link"
-                  style={styles.sidebarButtonText}
-                >
-                  Plan Week
-                </ThemedText>
+                <ThemedText type="link">Plan Week</ThemedText>
               </TouchableOpacity>
             </ThemedView>
           </ThemedView>
         </ThemedView>
       </ScrollView>
 
-      {/* Bottom Navigation */}
-      <ThemedView style={styles.bottomNavigation}>
-        {navigationTabs.map((tab) => (
-          <TouchableOpacity
-            key={tab.id}
-            onPress={() => setActiveTab(tab.id)}
-            style={[
-              styles.navTab,
-              activeTab === tab.id && styles.activeNavTab,
-            ]}
-          >
-            <Ionicons
-              name={tab.icon as IoniconsName}
-              size={20}
-              color={
-                activeTab === tab.id
-                  ? "white"
-                  : colorScheme === "dark"
-                  ? "#fff"
-                  : "#666"
-              }
-            />
-            <ThemedText
-              style={[
-                styles.navTabLabel,
-                activeTab === tab.id && styles.activeNavTabLabel,
-              ]}
-            >
-              {tab.label}
-            </ThemedText>
-          </TouchableOpacity>
-        ))}
-      </ThemedView>
-
       {/* Add Item Modal */}
       <Modal
-        animationType="slide"
-        transparent={true}
         visible={addItemModalVisible}
-        onRequestClose={() => setAddItemModalVisible(false)}
+        onClose={() => setAddItemModalVisible(false)}
+        title="Add New Item"
       >
-        <ThemedView style={styles.modalOverlay}>
-          <ThemedView
-            style={[
-              styles.modalContent,
-              {
-                backgroundColor:
-                  colorScheme === "dark" ? "#1a1a1a" : "#ffffff",
-              },
-            ]}
-          >
-            <ThemedView style={styles.modalHeader}>
-              <ThemedText type="subtitle" style={styles.modalTitle}>
-                Add New Item
-              </ThemedText>
-              <TouchableOpacity
-                onPress={() => setAddItemModalVisible(false)}
-              >
-                <Ionicons
-                  name={"close" as IoniconsName}
-                  size={24}
-                  color={colorScheme === "dark" ? "#fff" : "#333"}
-                />
-              </TouchableOpacity>
-            </ThemedView>
+        <FormInput
+          label="Item Name"
+          placeholder="e.g., Organic Spinach"
+          value={newItem.name}
+          onChangeText={(text) =>
+            setNewItem({ ...newItem, name: text })
+          }
+        />
 
-            <ScrollView
-              style={styles.modalBody}
-              showsVerticalScrollIndicator={false}
-            >
-              {/* Item Name */}
-              <ThemedView style={styles.formGroup}>
-                <ThemedText
-                  type="defaultSemiBold"
-                  style={styles.formLabel}
-                >
-                  Item Name
-                </ThemedText>
-                <TextInput
-                  style={[
-                    styles.formInput,
-                    {
-                      borderColor:
-                        colorScheme === "dark" ? "#444" : "#e5e7eb",
-                      backgroundColor:
-                        colorScheme === "dark" ? "#333" : "#fff",
-                      color: colorScheme === "dark" ? "#fff" : "#333",
-                    },
-                  ]}
-                  placeholder="e.g., Organic Spinach"
-                  placeholderTextColor={
-                    colorScheme === "dark" ? "#888" : "#999"
-                  }
-                  value={newItem.name}
-                  onChangeText={(text) =>
-                    setNewItem({ ...newItem, name: text })
-                  }
-                />
-              </ThemedView>
-
-              {/* Quantity and Unit */}
-              <ThemedView style={styles.formRow}>
-                <ThemedView
-                  style={[
-                    styles.formGroup,
-                    { flex: 1, marginRight: 8 },
-                  ]}
-                >
-                  <ThemedText
-                    type="defaultSemiBold"
-                    style={styles.formLabel}
-                  >
-                    Quantity
-                  </ThemedText>
-                  <TextInput
-                    style={[
-                      styles.formInput,
-                      {
-                        borderColor:
-                          colorScheme === "dark" ? "#444" : "#e5e7eb",
-                        backgroundColor:
-                          colorScheme === "dark" ? "#333" : "#fff",
-                        color: colorScheme === "dark" ? "#fff" : "#333",
-                      },
-                    ]}
-                    placeholder="1"
-                    placeholderTextColor={
-                      colorScheme === "dark" ? "#888" : "#999"
-                    }
-                    value={newItem.quantity.toString()}
-                    onChangeText={(text) =>
-                      setNewItem({
-                        ...newItem,
-                        quantity: parseInt(text) || 1,
-                      })
-                    }
-                    keyboardType="numeric"
-                  />
-                </ThemedView>
-                <ThemedView
-                  style={[styles.formGroup, { flex: 1, marginLeft: 8 }]}
-                >
-                  <ThemedText
-                    type="defaultSemiBold"
-                    style={styles.formLabel}
-                  >
-                    Unit
-                  </ThemedText>
-                  <TouchableOpacity
-                    style={[styles.formInput, styles.pickerButton]}
-                  >
-                    <ThemedText
-                      type="default"
-                      style={styles.pickerText}
-                    >
-                      {newItem.unit}
-                    </ThemedText>
-                    <Ionicons
-                      name={"chevron-down" as IoniconsName}
-                      size={16}
-                      color={colorScheme === "dark" ? "#fff" : "#666"}
-                    />
-                  </TouchableOpacity>
-                </ThemedView>
-              </ThemedView>
-
-              {/* Add Button */}
-              <TouchableOpacity
-                style={[
-                  styles.modalButton,
-                  { backgroundColor: THEME_COLOR },
-                ]}
-                onPress={addNewItem}
-                disabled={!newItem.name.trim()}
-              >
-                <Ionicons
-                  name={"add" as IoniconsName}
-                  size={18}
-                  color="white"
-                  style={{ marginRight: 8 }}
-                />
-                <ThemedText
-                  type="defaultSemiBold"
-                  style={styles.modalButtonText}
-                >
-                  Add to Pantry
-                </ThemedText>
-              </TouchableOpacity>
-            </ScrollView>
-          </ThemedView>
+        <ThemedView
+          style={[styles.row, { backgroundColor: "transparent" }]}
+        >
+          <FormInput
+            label="Quantity"
+            placeholder="1"
+            value={newItem.quantity.toString()}
+            onChangeText={(text) =>
+              setNewItem({
+                ...newItem,
+                quantity: parseInt(text) || 1,
+              })
+            }
+            keyboardType="numeric"
+            containerStyle={{ flex: 1, marginRight: theme.spacing.sm }}
+          />
+          <FormInput
+            label="Unit"
+            value={newItem.unit}
+            containerStyle={{ flex: 1, marginLeft: theme.spacing.sm }}
+          />
         </ThemedView>
+
+        <ActionButton
+          title="Add to Pantry"
+          icon="add"
+          onPress={addNewItem}
+          disabled={!newItem.name.trim()}
+          style={{ marginTop: theme.spacing.lg }}
+        />
       </Modal>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f4f1e9",
-  },
-  header: {
-    backgroundColor: "white",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#e5e7eb",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  headerLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  logoContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: THEME_COLOR,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
-  },
-  headerText: {
-    flexDirection: "column",
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#111827",
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: "#6b7280",
-  },
-  headerRight: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  headerButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#f3f4f6",
-    justifyContent: "center",
-    alignItems: "center",
-    marginLeft: 12,
-    position: "relative",
-  },
-  notificationDot: {
-    position: "absolute",
-    top: 8,
-    right: 8,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: THEME_COLOR,
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 16,
-  },
-  welcomeContainer: {
-    backgroundColor: THEME_COLOR,
-    borderRadius: 16,
-    padding: 24,
-    marginVertical: 24,
-    position: "relative",
-    overflow: "hidden",
-  },
-  welcomeTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#1A1A21",
-    marginBottom: 8,
-  },
-  welcomeSubtitle: {
-    fontSize: 16,
-    color: "#1A1A21",
-    marginBottom: 16,
-  },
-  generateButton: {
-    backgroundColor: "white",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    alignSelf: "flex-start",
-  },
-  generateButtonIcon: {
-    marginRight: 8,
-  },
-  generateButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#111827",
-  },
-  quickActionsContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    marginBottom: 24,
-  },
-  quickActionCard: {
-    backgroundColor: "white",
-    borderRadius: 12,
-    padding: 16,
-    width: "48%",
-    marginBottom: 16,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: "#e5e7eb",
-  },
-  quickActionIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "#fef3c7",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  quickActionText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#111827",
-    textAlign: "center",
-  },
-  mainContent: {
-    flexDirection: "column",
-    marginBottom: 100,
-  },
-  recentRecipesContainer: {
-    marginBottom: 24,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  viewAllButton: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: THEME_COLOR,
-  },
-  recipeCard: {
-    backgroundColor: "white",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: "#e5e7eb",
-  },
-  recipeEmoji: {
-    fontSize: 32,
-    marginRight: 16,
-  },
-  recipeInfo: {
-    flex: 1,
-  },
-  recipeName: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#111827",
-    marginBottom: 4,
-  },
-  recipeDetails: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  recipeDetailItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginRight: 16,
-  },
-  recipeDetailText: {
-    fontSize: 14,
-    color: "#6b7280",
-    marginLeft: 4,
-  },
-  recipeRating: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#374151",
-    marginLeft: 4,
-  },
-  recipeAction: {
-    padding: 8,
-  },
-  emptyState: {
-    alignItems: "center",
-    paddingVertical: 40,
-    backgroundColor: "white",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#e5e7eb",
-  },
-  emptyText: {
-    marginTop: 12,
-    marginBottom: 8,
-    opacity: 0.7,
-    textAlign: "center",
-  },
-  sidebar: {
-    marginTop: 8,
-  },
-  sidebarCard: {
-    backgroundColor: "white",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 24,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: "#e5e7eb",
-  },
-  sidebarCardTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#111827",
-    marginBottom: 12,
-  },
-  expiringSoonHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  expiringDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#ef4444",
-    marginRight: 8,
-  },
-  expiringItem: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  expiringItemName: {
-    fontSize: 14,
-    color: "#374151",
-  },
-  expiringItemDays: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#dc2626",
-  },
-  sidebarButton: {
-    marginTop: 12,
-    paddingVertical: 8,
-    alignItems: "center",
-  },
-  sidebarButtonText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: THEME_COLOR,
-  },
-  weekPlanItem: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  weekDay: {
-    fontSize: 14,
-    color: "#6b7280",
-  },
-  weekMeal: {
-    fontSize: 14,
-    color: "#111827",
-  },
-  weekMealEmpty: {
-    fontSize: 14,
-    color: "#9ca3af",
-  },
-  statItem: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  statLabel: {
-    fontSize: 14,
-    color: "#6b7280",
-  },
-  statValue: {
-    fontSize: 14,
-    fontWeight: "bold",
-    color: "#111827",
-    marginLeft: 4,
-  },
-  ratingContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  bottomNavigation: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: "white",
-    borderTopWidth: 1,
-    borderTopColor: "#e5e7eb",
-    flexDirection: "row",
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-  },
-  navTab: {
-    flex: 1,
-    alignItems: "center",
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-  },
-  activeNavTab: {
-    backgroundColor: THEME_COLOR,
-  },
-  navTabLabel: {
-    fontSize: 12,
-    fontWeight: "500",
-    color: "#6b7280",
-    marginTop: 4,
-  },
-  activeNavTabLabel: {
-    color: "white",
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "flex-end",
-  },
-  modalContent: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: "85%",
-  },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(128, 128, 128, 0.2)",
-    backgroundColor: "transparent",
-  },
-  modalTitle: {
-    fontSize: 18,
-  },
-  modalBody: {
-    padding: 20,
-  },
-  formGroup: {
-    marginBottom: 16,
-    backgroundColor: "transparent",
-  },
-  formRow: {
-    flexDirection: "row",
-    backgroundColor: "transparent",
-  },
-  formLabel: {
-    fontSize: 14,
-    marginBottom: 8,
-  },
-  formInput: {
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    minHeight: 44,
-  },
-  pickerButton: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  pickerText: {
-    fontSize: 16,
-  },
-  modalButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 12,
-    borderRadius: 8,
-    marginTop: 20,
-  },
-  modalButtonText: {
-    fontSize: 16,
-    color: "white",
-    fontWeight: "600",
-  },
-});
