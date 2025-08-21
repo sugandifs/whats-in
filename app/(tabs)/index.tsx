@@ -12,6 +12,7 @@ import ApiService from "@/services/api";
 import { Recipe } from "@/services/types";
 import { styles } from "@/styles";
 import { homePageStyles } from "@/styles/pages";
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
@@ -24,7 +25,6 @@ import {
 } from "react-native";
 
 interface PantryItem {
-  id: string;
   name: string;
   category: string;
   quantity: number;
@@ -85,20 +85,41 @@ export default function MealPrepHome() {
   const getExpiringItems = (): ExpiringItem[] => {
     return pantryItems
       .filter((item) => {
+        // Ensure we have a valid date
+        const expirationDate =
+          item.expirationDate instanceof Date
+            ? item.expirationDate
+            : new Date(item.expirationDate);
+
+        // Check if the date is valid
+        if (isNaN(expirationDate.getTime())) {
+          console.warn(
+            `Invalid expiration date for item: ${item.name}`
+          );
+          return false;
+        }
+
         const daysUntilExpiration = Math.ceil(
-          (item.expirationDate.getTime() - Date.now()) /
+          (expirationDate.getTime() - Date.now()) /
             (1000 * 60 * 60 * 24)
         );
         return daysUntilExpiration <= 3 && daysUntilExpiration >= 0;
       })
       .slice(0, 3)
-      .map((item) => ({
-        name: item.name,
-        days: Math.ceil(
-          (item.expirationDate.getTime() - Date.now()) /
-            (1000 * 60 * 60 * 24)
-        ),
-      }));
+      .map((item) => {
+        const expirationDate =
+          item.expirationDate instanceof Date
+            ? item.expirationDate
+            : new Date(item.expirationDate);
+
+        return {
+          name: item.name,
+          days: Math.ceil(
+            (expirationDate.getTime() - Date.now()) /
+              (1000 * 60 * 60 * 24)
+          ),
+        };
+      });
   };
 
   // Load data from backend
@@ -111,62 +132,42 @@ export default function MealPrepHome() {
         const recipes = await ApiService.getRecipes();
         setRecentRecipes(recipes.slice(0, 3));
 
-        // Mock pantry items for now (replace with actual API call)
-        const mockPantryItems: PantryItem[] = [
-          {
-            id: "1",
-            name: "Spinach",
-            category: "fresh",
-            quantity: 1,
-            unit: "package",
-            expirationDate: new Date(
-              Date.now() + 2 * 24 * 60 * 60 * 1000
-            ),
-            purchaseDate: new Date(
-              Date.now() - 3 * 24 * 60 * 60 * 1000
-            ),
-            location: "fridge",
-            emoji: "🥬",
-            notes: "Organic baby spinach",
-          },
-          {
-            id: "2",
-            name: "Bell Peppers",
-            category: "fresh",
-            quantity: 3,
-            unit: "piece",
-            expirationDate: new Date(
-              Date.now() + 3 * 24 * 60 * 60 * 1000
-            ),
-            purchaseDate: new Date(
-              Date.now() - 2 * 24 * 60 * 60 * 1000
-            ),
-            location: "fridge",
-            emoji: "🫑",
-          },
-          {
-            id: "3",
-            name: "Greek Yogurt",
-            category: "dairy",
-            quantity: 1,
-            unit: "package",
-            expirationDate: new Date(
-              Date.now() + 4 * 24 * 60 * 60 * 1000
-            ),
-            purchaseDate: new Date(
-              Date.now() - 1 * 24 * 60 * 60 * 1000
-            ),
-            location: "fridge",
-            emoji: "🥛",
-          },
-        ];
-        setPantryItems(mockPantryItems);
+        // Load pantry items and convert date strings to Date objects
+        const pantryItemsFromApi = await ApiService.getPantryItems();
+
+        // Convert date strings to Date objects
+        const pantryItems: PantryItem[] = pantryItemsFromApi.map(
+          (item) => ({
+            ...item,
+            expirationDate: new Date(item.expirationDate),
+            purchaseDate: new Date(item.purchaseDate),
+          })
+        );
+
+        setPantryItems(pantryItems);
       }
     } catch (error) {
       console.error("Failed to load data:", error);
       Alert.alert("Error", "Failed to load data. Please try again.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleToggleFavorite = async (
+    recipeId: string,
+    isFavorite: boolean
+  ) => {
+    try {
+      if (isFavorite) {
+        await ApiService.removeFromFavorites(recipeId);
+      } else {
+        await ApiService.addToFavorites(recipeId);
+      }
+      await loadData();
+    } catch (error) {
+      console.error("Failed to toggle favorite:", error);
+      Alert.alert("Error", "Failed to update favorite status.");
     }
   };
 
@@ -190,7 +191,6 @@ export default function MealPrepHome() {
 
     try {
       const item: PantryItem = {
-        id: Date.now().toString(),
         name: newItem.name,
         category: newItem.category,
         quantity: newItem.quantity,
@@ -307,7 +307,10 @@ export default function MealPrepHome() {
       />
 
       <ScrollView
-        style={{ ...styles.container, padding: theme.spacing.lg }}
+        style={{
+          ...styles.container,
+          paddingHorizontal: theme.spacing.lg,
+        }}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -477,9 +480,25 @@ export default function MealPrepHome() {
                   </ThemedView>
                   <TouchableOpacity
                     style={{ padding: theme.spacing.sm }}
+                    onPress={() =>
+                      handleToggleFavorite(
+                        recipe._id,
+                        recipe.isFavorite
+                      )
+                    }
                   >
                     <ThemedText style={{ fontSize: 20 }}>
-                      {recipe.isFavorite ? "❤️" : "🤍"}
+                      <Ionicons
+                        name={
+                          recipe.isFavorite ? "heart" : "heart-outline"
+                        }
+                        size={18}
+                        color={
+                          recipe.isFavorite
+                            ? themedColors.error
+                            : themedColors.textSecondary
+                        }
+                      />
                     </ThemedText>
                   </TouchableOpacity>
                 </TouchableOpacity>

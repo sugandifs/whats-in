@@ -124,13 +124,14 @@ export const styles = StyleSheet.create({
   // Modals
   modalOverlay: {
     flex: 1,
-    justifyContent: "flex-end",
+    justifyContent: "center",
+    alignItems: "center",
   },
 
   modalContent: {
-    borderTopLeftRadius: baseTheme.borderRadius.xl,
-    borderTopRightRadius: baseTheme.borderRadius.xl,
+    borderRadius: baseTheme.borderRadius.xl,
     maxHeight: "85%",
+    overflow: "hidden",
   },
 
   modalHeader: {
@@ -193,5 +194,37 @@ export const styles = StyleSheet.create({
     fontSize: baseTheme.typography.sizes.xs,
     opacity: 0.7,
     marginTop: baseTheme.spacing.xs,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: baseTheme.spacing.lg,
+    paddingHorizontal: baseTheme.spacing.lg,
+    backgroundColor: "transparent",
+  },
+
+  sectionTitle: {
+    fontSize: baseTheme.typography.sizes.xl,
+    fontWeight: baseTheme.typography.weights.bold,
+    backgroundColor: "transparent",
+  },
+
+  // Sections with consistent padding
+  section: {
+    marginBottom: baseTheme.spacing.xl,
+    paddingHorizontal: baseTheme.spacing.lg,
+    backgroundColor: "transparent",
+  },
+
+  chip: {
+    paddingHorizontal: baseTheme.spacing.md,
+    paddingVertical: baseTheme.spacing.sm,
+    borderRadius: baseTheme.borderRadius.full, // Typically 20-24 for pill shape
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    minHeight: 32,
   },
 });

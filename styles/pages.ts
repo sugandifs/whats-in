@@ -198,3 +198,239 @@ export const homePageStyles = StyleSheet.create({
     textAlign: "center",
   },
 });
+
+export const recipeDetailsStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  centered: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(128, 128, 128, 0.2)",
+  },
+  headerButton: {
+    padding: 8,
+  },
+  headerActions: {
+    flexDirection: "row",
+    backgroundColor: "transparent",
+  },
+  content: {
+    flex: 1,
+  },
+  recipeHeader: {
+    alignItems: "center",
+    paddingVertical: 32,
+    paddingHorizontal: 24,
+    backgroundColor: "transparent",
+  },
+  recipeEmoji: {
+    fontSize: 72,
+    marginBottom: 16,
+  },
+  recipeName: {
+    fontSize: 28,
+    textAlign: "center",
+    marginBottom: 12,
+    lineHeight: 34,
+  },
+  recipeDescription: {
+    fontSize: 16,
+    textAlign: "center",
+    opacity: 0.8,
+    lineHeight: 22,
+    marginBottom: 16,
+  },
+  badgesContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    justifyContent: "center",
+    backgroundColor: "transparent",
+  },
+  badge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 4,
+  },
+  badgeText: {
+    color: "white",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  statsContainer: {
+    flexDirection: "row",
+    paddingHorizontal: 16,
+    paddingVertical: 20,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: "rgba(128, 128, 128, 0.2)",
+    backgroundColor: "transparent",
+  },
+  statItem: {
+    flex: 1,
+    alignItems: "center",
+    backgroundColor: "transparent",
+  },
+  statLabel: {
+    fontSize: 12,
+    marginTop: 4,
+    marginBottom: 2,
+  },
+  statValue: {
+    fontSize: 14,
+    opacity: 0.8,
+  },
+  section: {
+    paddingHorizontal: 24,
+    paddingVertical: 20,
+    backgroundColor: "transparent",
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+    gap: 12,
+    backgroundColor: "transparent",
+  },
+  sectionTitle: {
+    fontSize: 20,
+  },
+  ingredientsList: {
+    backgroundColor: "transparent",
+  },
+  ingredientItem: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginBottom: 12,
+    backgroundColor: "transparent",
+  },
+  ingredientBullet: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: baseTheme.colors.primary,
+    marginTop: 6,
+    marginRight: 16,
+  },
+  ingredientText: {
+    flex: 1,
+    fontSize: 16,
+    lineHeight: 20,
+  },
+  instructionsList: {
+    backgroundColor: "transparent",
+  },
+  instructionItem: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginBottom: 16,
+    backgroundColor: "transparent",
+  },
+  stepNumber: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: `${baseTheme.colors.primary}30`,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 16,
+    marginTop: 2,
+  },
+  stepText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: baseTheme.colors.primary,
+  },
+  instructionText: {
+    flex: 1,
+    fontSize: 16,
+    lineHeight: 22,
+  },
+  tagsList: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    backgroundColor: "transparent",
+  },
+  tag: {
+    backgroundColor: `${baseTheme.colors.primary}15`,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: `${baseTheme.colors.primary}30`,
+  },
+  tagText: {
+    fontSize: 14,
+    color: baseTheme.colors.primary,
+    fontWeight: "500",
+  },
+  infoList: {
+    backgroundColor: "transparent",
+  },
+  infoItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 8,
+    backgroundColor: "transparent",
+  },
+  infoLabel: {
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  infoValue: {
+    fontSize: 16,
+    opacity: 0.8,
+  },
+  actionButtons: {
+    flexDirection: "row",
+    paddingHorizontal: 24,
+    gap: 12,
+    backgroundColor: "transparent",
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 8,
+  },
+  editButton: {
+    borderColor: baseTheme.colors.primary,
+    backgroundColor: `${baseTheme.colors.primary}10`,
+  },
+  deleteButton: {
+    borderColor: "#ef4444",
+    backgroundColor: "#ef444410",
+  },
+  actionButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  button: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  buttonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+});

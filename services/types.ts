@@ -42,7 +42,7 @@ export interface CreateRecipeData {
   difficulty: "Easy" | "Medium" | "Hard";
   prepTime: string;
   cookTime: string;
-  servings: number;
+  servings: string;
   rating?: number;
   image?: string;
   description: string;

@@ -3,6 +3,7 @@ import { ThemedView } from "@/components/ThemedView";
 import { useAuth } from "@/context/AuthContext";
 import ApiService from "@/services/api";
 import { Recipe } from "@/services/types";
+import { recipeDetailsStyles } from "@/styles/pages";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -14,7 +15,6 @@ import {
   ScrollView,
   Share,
   StatusBar,
-  StyleSheet,
   TouchableOpacity,
   useColorScheme,
 } from "react-native";
@@ -135,9 +135,7 @@ export default function RecipeDetailPage() {
 
   const editRecipe = () => {
     if (!recipe) return;
-    // TODO: Navigate to edit recipe page
-    console.log("Edit recipe:", recipe._id);
-    // router.push(`/recipe/${recipe._id}/edit`);
+    router.push(`/edit-recipe/${recipe._id}`);
   };
 
   const deleteRecipe = () => {
@@ -195,7 +193,12 @@ export default function RecipeDetailPage() {
 
   if (loading) {
     return (
-      <SafeAreaView style={[styles.container, styles.centered]}>
+      <SafeAreaView
+        style={[
+          recipeDetailsStyles.container,
+          recipeDetailsStyles.centered,
+        ]}
+      >
         <ActivityIndicator size="large" color={THEME_COLOR} />
         <ThemedText style={{ marginTop: 16 }}>
           Loading recipe...
@@ -206,7 +209,12 @@ export default function RecipeDetailPage() {
 
   if (!recipe) {
     return (
-      <SafeAreaView style={[styles.container, styles.centered]}>
+      <SafeAreaView
+        style={[
+          recipeDetailsStyles.container,
+          recipeDetailsStyles.centered,
+        ]}
+      >
         <Ionicons
           name="document-outline"
           size={64}
@@ -217,19 +225,21 @@ export default function RecipeDetailPage() {
         </ThemedText>
         <TouchableOpacity
           style={[
-            styles.button,
+            recipeDetailsStyles.button,
             { backgroundColor: THEME_COLOR, marginTop: 16 },
           ]}
           onPress={() => router.back()}
         >
-          <ThemedText style={styles.buttonText}>Go Back</ThemedText>
+          <ThemedText style={recipeDetailsStyles.buttonText}>
+            Go Back
+          </ThemedText>
         </TouchableOpacity>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={recipeDetailsStyles.container}>
       <StatusBar
         barStyle={
           colorScheme === "dark" ? "light-content" : "dark-content"
@@ -237,9 +247,9 @@ export default function RecipeDetailPage() {
       />
 
       {/* Header */}
-      <ThemedView style={styles.header}>
+      <ThemedView style={recipeDetailsStyles.header}>
         <TouchableOpacity
-          style={styles.headerButton}
+          style={recipeDetailsStyles.headerButton}
           onPress={() => router.back()}
         >
           <Ionicons
@@ -249,9 +259,9 @@ export default function RecipeDetailPage() {
           />
         </TouchableOpacity>
 
-        <ThemedView style={styles.headerActions}>
+        <ThemedView style={recipeDetailsStyles.headerActions}>
           <TouchableOpacity
-            style={styles.headerButton}
+            style={recipeDetailsStyles.headerButton}
             onPress={shareRecipe}
           >
             <Ionicons
@@ -262,7 +272,7 @@ export default function RecipeDetailPage() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.headerButton}
+            style={recipeDetailsStyles.headerButton}
             onPress={() => handleToggleFavorite(recipe._id, isFavorite)}
           >
             <Ionicons
@@ -280,7 +290,7 @@ export default function RecipeDetailPage() {
 
           {recipe.isOwned && (
             <TouchableOpacity
-              style={styles.headerButton}
+              style={recipeDetailsStyles.headerButton}
               onPress={editRecipe}
             >
               <Ionicons
@@ -294,7 +304,7 @@ export default function RecipeDetailPage() {
       </ThemedView>
 
       <ScrollView
-        style={styles.content}
+        style={recipeDetailsStyles.content}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -305,29 +315,38 @@ export default function RecipeDetailPage() {
         }
       >
         {/* Recipe Header */}
-        <ThemedView style={styles.recipeHeader}>
-          <ThemedText style={styles.recipeEmoji}>
+        <ThemedView style={recipeDetailsStyles.recipeHeader}>
+          <ThemedText style={recipeDetailsStyles.recipeEmoji}>
             {recipe.image || "🍽️"}
           </ThemedText>
-          <ThemedText type="title" style={styles.recipeName}>
+          <ThemedText
+            type="title"
+            style={recipeDetailsStyles.recipeName}
+          >
             {recipe.name}
           </ThemedText>
-          <ThemedText type="default" style={styles.recipeDescription}>
+          <ThemedText
+            type="default"
+            style={recipeDetailsStyles.recipeDescription}
+          >
             {recipe.description}
           </ThemedText>
 
           {/* Badges */}
-          <ThemedView style={styles.badgesContainer}>
+          <ThemedView style={recipeDetailsStyles.badgesContainer}>
             {recipe.isOwned && (
               <ThemedView
-                style={[styles.badge, { backgroundColor: "#10b981" }]}
+                style={[
+                  recipeDetailsStyles.badge,
+                  { backgroundColor: "#10b981" },
+                ]}
               >
                 <Ionicons
                   name="checkmark-circle"
                   size={14}
                   color="white"
                 />
-                <ThemedText style={styles.badgeText}>
+                <ThemedText style={recipeDetailsStyles.badgeText}>
                   Your Recipe
                 </ThemedText>
               </ThemedView>
@@ -335,10 +354,13 @@ export default function RecipeDetailPage() {
 
             {recipe.tags?.includes("ai-generated") && (
               <ThemedView
-                style={[styles.badge, { backgroundColor: THEME_COLOR }]}
+                style={[
+                  recipeDetailsStyles.badge,
+                  { backgroundColor: THEME_COLOR },
+                ]}
               >
                 <Ionicons name="sparkles" size={14} color="white" />
-                <ThemedText style={styles.badgeText}>
+                <ThemedText style={recipeDetailsStyles.badgeText}>
                   AI Generated
                 </ThemedText>
               </ThemedView>
@@ -346,7 +368,7 @@ export default function RecipeDetailPage() {
 
             <ThemedView
               style={[
-                styles.badge,
+                recipeDetailsStyles.badge,
                 {
                   backgroundColor: getDifficultyColor(
                     recipe.difficulty || "Medium"
@@ -354,7 +376,7 @@ export default function RecipeDetailPage() {
                 },
               ]}
             >
-              <ThemedText style={styles.badgeText}>
+              <ThemedText style={recipeDetailsStyles.badgeText}>
                 {recipe.difficulty || "Medium"}
               </ThemedText>
             </ThemedView>
@@ -362,62 +384,94 @@ export default function RecipeDetailPage() {
         </ThemedView>
 
         {/* Recipe Stats */}
-        <ThemedView style={styles.statsContainer}>
-          <ThemedView style={styles.statItem}>
+        <ThemedView style={recipeDetailsStyles.statsContainer}>
+          <ThemedView style={recipeDetailsStyles.statItem}>
             <Ionicons name="time" size={20} color={THEME_COLOR} />
-            <ThemedText type="defaultSemiBold" style={styles.statLabel}>
+            <ThemedText
+              type="defaultSemiBold"
+              style={recipeDetailsStyles.statLabel}
+            >
               Prep Time
             </ThemedText>
-            <ThemedText type="default" style={styles.statValue}>
+            <ThemedText
+              type="default"
+              style={recipeDetailsStyles.statValue}
+            >
               {formatTime(recipe.prepTime || "N/A")}
             </ThemedText>
           </ThemedView>
 
-          <ThemedView style={styles.statItem}>
+          <ThemedView style={recipeDetailsStyles.statItem}>
             <Ionicons name="flame" size={20} color={THEME_COLOR} />
-            <ThemedText type="defaultSemiBold" style={styles.statLabel}>
+            <ThemedText
+              type="defaultSemiBold"
+              style={recipeDetailsStyles.statLabel}
+            >
               Cook Time
             </ThemedText>
-            <ThemedText type="default" style={styles.statValue}>
+            <ThemedText
+              type="default"
+              style={recipeDetailsStyles.statValue}
+            >
               {formatTime(recipe.cookTime || "N/A")}
             </ThemedText>
           </ThemedView>
 
-          <ThemedView style={styles.statItem}>
+          <ThemedView style={recipeDetailsStyles.statItem}>
             <Ionicons name="people" size={20} color={THEME_COLOR} />
-            <ThemedText type="defaultSemiBold" style={styles.statLabel}>
+            <ThemedText
+              type="defaultSemiBold"
+              style={recipeDetailsStyles.statLabel}
+            >
               Servings
             </ThemedText>
-            <ThemedText type="default" style={styles.statValue}>
+            <ThemedText
+              type="default"
+              style={recipeDetailsStyles.statValue}
+            >
               {recipe.servings || "4"}
             </ThemedText>
           </ThemedView>
 
-          <ThemedView style={styles.statItem}>
+          <ThemedView style={recipeDetailsStyles.statItem}>
             <Ionicons name="star" size={20} color={THEME_COLOR} />
-            <ThemedText type="defaultSemiBold" style={styles.statLabel}>
+            <ThemedText
+              type="defaultSemiBold"
+              style={recipeDetailsStyles.statLabel}
+            >
               Rating
             </ThemedText>
-            <ThemedText type="default" style={styles.statValue}>
+            <ThemedText
+              type="default"
+              style={recipeDetailsStyles.statValue}
+            >
               {recipe.rating || "New"}
             </ThemedText>
           </ThemedView>
         </ThemedView>
 
         {/* Ingredients Section */}
-        <ThemedView style={styles.section}>
-          <ThemedView style={styles.sectionHeader}>
+        <ThemedView style={recipeDetailsStyles.section}>
+          <ThemedView style={recipeDetailsStyles.sectionHeader}>
             <Ionicons name="list" size={24} color={THEME_COLOR} />
-            <ThemedText type="subtitle" style={styles.sectionTitle}>
+            <ThemedText
+              type="subtitle"
+              style={recipeDetailsStyles.sectionTitle}
+            >
               Ingredients ({recipe.ingredients?.length || 0})
             </ThemedText>
           </ThemedView>
 
-          <ThemedView style={styles.ingredientsList}>
+          <ThemedView style={recipeDetailsStyles.ingredientsList}>
             {recipe.ingredients?.map((ingredient, index) => (
-              <ThemedView key={index} style={styles.ingredientItem}>
-                <ThemedView style={styles.ingredientBullet} />
-                <ThemedText style={styles.ingredientText}>
+              <ThemedView
+                key={index}
+                style={recipeDetailsStyles.ingredientItem}
+              >
+                <ThemedView
+                  style={recipeDetailsStyles.ingredientBullet}
+                />
+                <ThemedText style={recipeDetailsStyles.ingredientText}>
                   {ingredient}
                 </ThemedText>
               </ThemedView>
@@ -426,27 +480,33 @@ export default function RecipeDetailPage() {
         </ThemedView>
 
         {/* Instructions Section */}
-        <ThemedView style={styles.section}>
-          <ThemedView style={styles.sectionHeader}>
+        <ThemedView style={recipeDetailsStyles.section}>
+          <ThemedView style={recipeDetailsStyles.sectionHeader}>
             <Ionicons
               name="document-text"
               size={24}
               color={THEME_COLOR}
             />
-            <ThemedText type="subtitle" style={styles.sectionTitle}>
+            <ThemedText
+              type="subtitle"
+              style={recipeDetailsStyles.sectionTitle}
+            >
               Instructions ({recipe.instructions?.length || 0} steps)
             </ThemedText>
           </ThemedView>
 
-          <ThemedView style={styles.instructionsList}>
+          <ThemedView style={recipeDetailsStyles.instructionsList}>
             {recipe.instructions?.map((instruction, index) => (
-              <ThemedView key={index} style={styles.instructionItem}>
-                <ThemedView style={styles.stepNumber}>
-                  <ThemedText style={styles.stepText}>
+              <ThemedView
+                key={index}
+                style={recipeDetailsStyles.instructionItem}
+              >
+                <ThemedView style={recipeDetailsStyles.stepNumber}>
+                  <ThemedText style={recipeDetailsStyles.stepText}>
                     {index + 1}
                   </ThemedText>
                 </ThemedView>
-                <ThemedText style={styles.instructionText}>
+                <ThemedText style={recipeDetailsStyles.instructionText}>
                   {instruction}
                 </ThemedText>
               </ThemedView>
@@ -456,22 +516,27 @@ export default function RecipeDetailPage() {
 
         {/* Tags Section */}
         {recipe.tags && recipe.tags.length > 0 && (
-          <ThemedView style={styles.section}>
-            <ThemedView style={styles.sectionHeader}>
+          <ThemedView style={recipeDetailsStyles.section}>
+            <ThemedView style={recipeDetailsStyles.sectionHeader}>
               <Ionicons
                 name="pricetags"
                 size={24}
                 color={THEME_COLOR}
               />
-              <ThemedText type="subtitle" style={styles.sectionTitle}>
+              <ThemedText
+                type="subtitle"
+                style={recipeDetailsStyles.sectionTitle}
+              >
                 Tags
               </ThemedText>
             </ThemedView>
 
-            <ThemedView style={styles.tagsList}>
+            <ThemedView style={recipeDetailsStyles.tagsList}>
               {recipe.tags.map((tag, index) => (
-                <ThemedView key={index} style={styles.tag}>
-                  <ThemedText style={styles.tagText}>#{tag}</ThemedText>
+                <ThemedView key={index} style={recipeDetailsStyles.tag}>
+                  <ThemedText style={recipeDetailsStyles.tagText}>
+                    #{tag}
+                  </ThemedText>
                 </ThemedView>
               ))}
             </ThemedView>
@@ -479,31 +544,36 @@ export default function RecipeDetailPage() {
         )}
 
         {/* Recipe Info */}
-        <ThemedView style={styles.section}>
-          <ThemedView style={styles.sectionHeader}>
+        <ThemedView style={recipeDetailsStyles.section}>
+          <ThemedView style={recipeDetailsStyles.sectionHeader}>
             <Ionicons
               name="information-circle"
               size={24}
               color={THEME_COLOR}
             />
-            <ThemedText type="subtitle" style={styles.sectionTitle}>
+            <ThemedText
+              type="subtitle"
+              style={recipeDetailsStyles.sectionTitle}
+            >
               Recipe Details
             </ThemedText>
           </ThemedView>
 
-          <ThemedView style={styles.infoList}>
-            <ThemedView style={styles.infoItem}>
-              <ThemedText style={styles.infoLabel}>Cuisine:</ThemedText>
-              <ThemedText style={styles.infoValue}>
+          <ThemedView style={recipeDetailsStyles.infoList}>
+            <ThemedView style={recipeDetailsStyles.infoItem}>
+              <ThemedText style={recipeDetailsStyles.infoLabel}>
+                Cuisine:
+              </ThemedText>
+              <ThemedText style={recipeDetailsStyles.infoValue}>
                 {recipe.cuisine || "Various"}
               </ThemedText>
             </ThemedView>
 
-            <ThemedView style={styles.infoItem}>
-              <ThemedText style={styles.infoLabel}>
+            <ThemedView style={recipeDetailsStyles.infoItem}>
+              <ThemedText style={recipeDetailsStyles.infoLabel}>
                 Total Time:
               </ThemedText>
-              <ThemedText style={styles.infoValue}>
+              <ThemedText style={recipeDetailsStyles.infoValue}>
                 {recipe.prepTime && recipe.cookTime
                   ? `${formatTime(recipe.prepTime)} + ${formatTime(
                       recipe.cookTime
@@ -512,9 +582,11 @@ export default function RecipeDetailPage() {
               </ThemedText>
             </ThemedView>
 
-            <ThemedView style={styles.infoItem}>
-              <ThemedText style={styles.infoLabel}>Created:</ThemedText>
-              <ThemedText style={styles.infoValue}>
+            <ThemedView style={recipeDetailsStyles.infoItem}>
+              <ThemedText style={recipeDetailsStyles.infoLabel}>
+                Created:
+              </ThemedText>
+              <ThemedText style={recipeDetailsStyles.infoValue}>
                 {recipe.createdAt
                   ? new Date(recipe.createdAt).toLocaleDateString()
                   : "Unknown"}
@@ -525,15 +597,18 @@ export default function RecipeDetailPage() {
 
         {/* Action Buttons */}
         {recipe.isOwned && (
-          <ThemedView style={styles.actionButtons}>
+          <ThemedView style={recipeDetailsStyles.actionButtons}>
             <TouchableOpacity
-              style={[styles.actionButton, styles.editButton]}
+              style={[
+                recipeDetailsStyles.actionButton,
+                recipeDetailsStyles.editButton,
+              ]}
               onPress={editRecipe}
             >
               <Ionicons name="create" size={20} color={THEME_COLOR} />
               <ThemedText
                 style={[
-                  styles.actionButtonText,
+                  recipeDetailsStyles.actionButtonText,
                   { color: THEME_COLOR },
                 ]}
               >
@@ -542,12 +617,18 @@ export default function RecipeDetailPage() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.actionButton, styles.deleteButton]}
+              style={[
+                recipeDetailsStyles.actionButton,
+                recipeDetailsStyles.deleteButton,
+              ]}
               onPress={deleteRecipe}
             >
               <Ionicons name="trash" size={20} color="#ef4444" />
               <ThemedText
-                style={[styles.actionButtonText, { color: "#ef4444" }]}
+                style={[
+                  recipeDetailsStyles.actionButtonText,
+                  { color: "#ef4444" },
+                ]}
               >
                 Delete Recipe
               </ThemedText>
@@ -561,239 +642,3 @@ export default function RecipeDetailPage() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  centered: {
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(128, 128, 128, 0.2)",
-  },
-  headerButton: {
-    padding: 8,
-  },
-  headerActions: {
-    flexDirection: "row",
-    backgroundColor: "transparent",
-  },
-  content: {
-    flex: 1,
-  },
-  recipeHeader: {
-    alignItems: "center",
-    paddingVertical: 32,
-    paddingHorizontal: 24,
-    backgroundColor: "transparent",
-  },
-  recipeEmoji: {
-    fontSize: 72,
-    marginBottom: 16,
-  },
-  recipeName: {
-    fontSize: 28,
-    textAlign: "center",
-    marginBottom: 12,
-    lineHeight: 34,
-  },
-  recipeDescription: {
-    fontSize: 16,
-    textAlign: "center",
-    opacity: 0.8,
-    lineHeight: 22,
-    marginBottom: 16,
-  },
-  badgesContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    justifyContent: "center",
-    backgroundColor: "transparent",
-  },
-  badge: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    gap: 4,
-  },
-  badgeText: {
-    color: "white",
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  statsContainer: {
-    flexDirection: "row",
-    paddingHorizontal: 16,
-    paddingVertical: 20,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: "rgba(128, 128, 128, 0.2)",
-    backgroundColor: "transparent",
-  },
-  statItem: {
-    flex: 1,
-    alignItems: "center",
-    backgroundColor: "transparent",
-  },
-  statLabel: {
-    fontSize: 12,
-    marginTop: 4,
-    marginBottom: 2,
-  },
-  statValue: {
-    fontSize: 14,
-    opacity: 0.8,
-  },
-  section: {
-    paddingHorizontal: 24,
-    paddingVertical: 20,
-    backgroundColor: "transparent",
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 16,
-    gap: 12,
-    backgroundColor: "transparent",
-  },
-  sectionTitle: {
-    fontSize: 20,
-  },
-  ingredientsList: {
-    backgroundColor: "transparent",
-  },
-  ingredientItem: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    marginBottom: 12,
-    backgroundColor: "transparent",
-  },
-  ingredientBullet: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: THEME_COLOR,
-    marginTop: 6,
-    marginRight: 16,
-  },
-  ingredientText: {
-    flex: 1,
-    fontSize: 16,
-    lineHeight: 20,
-  },
-  instructionsList: {
-    backgroundColor: "transparent",
-  },
-  instructionItem: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    marginBottom: 16,
-    backgroundColor: "transparent",
-  },
-  stepNumber: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: `${THEME_COLOR}20`,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 16,
-    marginTop: 2,
-  },
-  stepText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: THEME_COLOR,
-  },
-  instructionText: {
-    flex: 1,
-    fontSize: 16,
-    lineHeight: 22,
-  },
-  tagsList: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    backgroundColor: "transparent",
-  },
-  tag: {
-    backgroundColor: `${THEME_COLOR}15`,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: `${THEME_COLOR}30`,
-  },
-  tagText: {
-    fontSize: 14,
-    color: THEME_COLOR,
-    fontWeight: "500",
-  },
-  infoList: {
-    backgroundColor: "transparent",
-  },
-  infoItem: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 8,
-    backgroundColor: "transparent",
-  },
-  infoLabel: {
-    fontSize: 16,
-    fontWeight: "500",
-  },
-  infoValue: {
-    fontSize: 16,
-    opacity: 0.8,
-  },
-  actionButtons: {
-    flexDirection: "row",
-    paddingHorizontal: 24,
-    gap: 12,
-    backgroundColor: "transparent",
-  },
-  actionButton: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    gap: 8,
-  },
-  editButton: {
-    borderColor: THEME_COLOR,
-    backgroundColor: `${THEME_COLOR}10`,
-  },
-  deleteButton: {
-    borderColor: "#ef4444",
-    backgroundColor: "#ef444410",
-  },
-  actionButtonText: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  button: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  buttonText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-});
