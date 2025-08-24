@@ -290,8 +290,18 @@ export default function PantryPage() {
     if (newQuantity < 0) return;
 
     try {
-      await ApiService.updatePantryItemQuantity(itemId, newQuantity);
-      await loadData(); // Refresh data
+      if (newQuantity === 0) {
+        await ApiService.deletePantryItem(itemId);
+        Alert.alert(
+          "Item Removed",
+          "Item was automatically removed from your pantry."
+        );
+        await loadData();
+      } else {
+        // Normal quantity update
+        await ApiService.updatePantryItemQuantity(itemId, newQuantity);
+        await loadData();
+      }
     } catch (error) {
       console.error("Failed to update quantity:", error);
       Alert.alert("Error", "Failed to update quantity.");

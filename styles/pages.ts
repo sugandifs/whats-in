@@ -434,3 +434,198 @@ export const recipeDetailsStyles = StyleSheet.create({
     fontWeight: "600",
   },
 });
+
+export const mealPrepStyles = StyleSheet.create({
+  weekNavigation: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 20,
+    paddingHorizontal: 16,
+    backgroundColor: "transparent",
+  },
+  weekNavButton: {
+    padding: 8,
+  },
+  weekTitle: {
+    fontSize: 18,
+  },
+  statsContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 24,
+    paddingHorizontal: 16,
+    backgroundColor: "transparent",
+  },
+  statCard: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 16,
+    marginHorizontal: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  statNumber: {
+    fontSize: 24,
+    fontWeight: "bold",
+  },
+  statLabel: {
+    fontSize: 12,
+    opacity: 0.7,
+    marginTop: 4,
+  },
+  quickActions: {
+    marginBottom: 20,
+    backgroundColor: "transparent",
+  },
+  quickActionsTitle: {
+    fontSize: 18,
+    marginBottom: 16,
+  },
+  actionButtons: {
+    flexDirection: "row",
+    backgroundColor: "transparent",
+  },
+  daysContainer: {
+    marginBottom: 24,
+    backgroundColor: "transparent",
+  },
+  dayCard: {
+    marginBottom: 20,
+    borderRadius: 16,
+    borderWidth: 1,
+    overflow: "hidden",
+  },
+  dayHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(128, 128, 128, 0.1)",
+    backgroundColor: "transparent",
+  },
+  dayInfo: {
+    backgroundColor: "transparent",
+  },
+  dayName: {
+    fontSize: 16,
+  },
+  dayDate: {
+    fontSize: 14,
+    opacity: 0.7,
+  },
+  dayProgress: {
+    alignItems: "flex-end",
+    backgroundColor: "transparent",
+  },
+  progressText: {
+    fontSize: 12,
+    opacity: 0.7,
+    marginBottom: 4,
+  },
+  progressBar: {
+    width: 60,
+    height: 4,
+    borderRadius: 2,
+  },
+  progressFill: {
+    height: "100%",
+    borderRadius: 2,
+  },
+  mealsGrid: {
+    padding: 16,
+    backgroundColor: "transparent",
+  },
+  mealSlot: {
+    marginBottom: 12,
+    backgroundColor: "transparent",
+  },
+  mealTypeHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+    backgroundColor: "transparent",
+  },
+  mealTypeLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    marginLeft: 6,
+  },
+  mealCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  mealEmoji: {
+    fontSize: 24,
+    marginRight: 12,
+  },
+  mealInfo: {
+    flex: 1,
+    backgroundColor: "transparent",
+  },
+  mealName: {
+    fontSize: 14,
+  },
+  mealTime: {
+    fontSize: 12,
+    opacity: 0.7,
+  },
+  emptyMealSlot: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderStyle: "dashed",
+  },
+  addMealText: {
+    fontSize: 14,
+    marginLeft: 8,
+    fontWeight: "500",
+  },
+  suggestionCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    marginBottom: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  suggestionEmoji: {
+    fontSize: 28,
+    marginRight: 16,
+  },
+  suggestionInfo: {
+    flex: 1,
+    backgroundColor: "transparent",
+  },
+  suggestionName: {
+    fontSize: 16,
+    marginBottom: 4,
+  },
+  suggestionDetails: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "transparent",
+  },
+  suggestionTime: {
+    fontSize: 14,
+    opacity: 0.7,
+    marginRight: 12,
+  },
+  difficultyBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  difficultyText: {
+    fontSize: 12,
+    color: "white",
+    fontWeight: "600",
+  },
+});

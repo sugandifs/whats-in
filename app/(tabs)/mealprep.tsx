@@ -1,183 +1,77 @@
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
+import { ActionButton } from "@/components/ui/ActionButton";
+import { Header } from "@/components/ui/Header";
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { Modal } from "@/components/ui/Modal";
+import { useAuth } from "@/context/AuthContext";
+import { useThemedStyles } from "@/hooks/useThemedStyles";
+import ApiService from "@/services/api";
+import { Meal, MealPlan } from "@/services/types";
+import { styles } from "@/styles";
+import { mealPrepStyles } from "@/styles/pages";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
+  Alert,
   FlatList,
-  Modal,
+  RefreshControl,
   SafeAreaView,
   ScrollView,
   StatusBar,
-  StyleSheet,
   TouchableOpacity,
-  useColorScheme,
 } from "react-native";
 
 type IoniconsName = keyof typeof Ionicons.glyphMap;
 
-const THEME_COLOR = "#FFB902";
-
-interface Meal {
-  id: string;
-  name: string;
-  type: "breakfast" | "lunch" | "dinner" | "snack";
-  emoji: string;
-  prepTime: string;
-  difficulty: "Easy" | "Medium" | "Hard";
-}
-
-interface DayPlan {
-  date: string;
-  dayName: string;
-  meals: {
-    breakfast?: Meal;
-    lunch?: Meal;
-    dinner?: Meal;
-    snack?: Meal;
-  };
+interface WeekNavigation {
+  startDate: string;
+  endDate: string;
+  weekLabel: string;
 }
 
 export default function MealPlannerPage() {
   const router = useRouter();
-  const [selectedWeek, setSelectedWeek] = useState(0);
+  const { currentUser } = useAuth();
+  const { themedColors, theme } = useThemedStyles();
+
+  // State management
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedDay, setSelectedDay] = useState<string>("");
   const [selectedMealType, setSelectedMealType] = useState<
     "breakfast" | "lunch" | "dinner" | "snack"
   >("breakfast");
-  const colorScheme = useColorScheme();
 
-  const suggestedMeals: Meal[] = [
-    {
-      id: "1",
-      name: "Avocado Toast",
-      type: "breakfast",
-      emoji: "🥑",
-      prepTime: "10 min",
-      difficulty: "Easy",
-    },
-    {
-      id: "2",
-      name: "Greek Yogurt Bowl",
-      type: "breakfast",
-      emoji: "🥣",
-      prepTime: "5 min",
-      difficulty: "Easy",
-    },
-    {
-      id: "3",
-      name: "Mediterranean Salad",
-      type: "lunch",
-      emoji: "🥗",
-      prepTime: "15 min",
-      difficulty: "Easy",
-    },
-    {
-      id: "4",
-      name: "Chicken Stir Fry",
-      type: "dinner",
-      emoji: "🍗",
-      prepTime: "25 min",
-      difficulty: "Medium",
-    },
-    {
-      id: "5",
-      name: "Pasta Primavera",
-      type: "dinner",
-      emoji: "🍝",
-      prepTime: "30 min",
-      difficulty: "Medium",
-    },
-    {
-      id: "6",
-      name: "Fruit Smoothie",
-      type: "snack",
-      emoji: "🥤",
-      prepTime: "5 min",
-      difficulty: "Easy",
-    },
-    {
-      id: "7",
-      name: "Quinoa Bowl",
-      type: "lunch",
-      emoji: "🍲",
-      prepTime: "20 min",
-      difficulty: "Medium",
-    },
-    {
-      id: "8",
-      name: "Salmon Teriyaki",
-      type: "dinner",
-      emoji: "🐟",
-      prepTime: "35 min",
-      difficulty: "Hard",
-    },
-  ];
-
-  const [weekPlans, setWeekPlans] = useState<DayPlan[]>([
-    {
-      date: "Dec 2",
-      dayName: "Monday",
-      meals: {
-        breakfast: suggestedMeals[0],
-        lunch: suggestedMeals[2],
-        dinner: suggestedMeals[3],
-      },
-    },
-    {
-      date: "Dec 3",
-      dayName: "Tuesday",
-      meals: {
-        breakfast: suggestedMeals[1],
-        dinner: suggestedMeals[4],
-      },
-    },
-    {
-      date: "Dec 4",
-      dayName: "Wednesday",
-      meals: {
-        lunch: suggestedMeals[6],
-        dinner: suggestedMeals[7],
-        snack: suggestedMeals[5],
-      },
-    },
-    {
-      date: "Dec 5",
-      dayName: "Thursday",
-      meals: {},
-    },
-    {
-      date: "Dec 6",
-      dayName: "Friday",
-      meals: {
-        breakfast: suggestedMeals[0],
-      },
-    },
-    {
-      date: "Dec 7",
-      dayName: "Saturday",
-      meals: {},
-    },
-    {
-      date: "Dec 8",
-      dayName: "Sunday",
-      meals: {},
-    },
-  ]);
+  // Data states
+  const [currentWeek, setCurrentWeek] = useState<WeekNavigation>({
+    startDate: "",
+    endDate: "",
+    weekLabel: "This Week",
+  });
+  const [weekPlans, setWeekPlans] = useState<MealPlan[]>([]);
+  const [suggestedMeals, setSuggestedMeals] = useState<Meal[]>([]);
+  const [weekStats, setWeekStats] = useState({
+    totalPlans: 0,
+    totalMeals: 0,
+    completeDays: 0,
+    avgMealsPerDay: 0,
+  });
 
   const mealTypes = [
     {
       key: "breakfast" as const,
       label: "Breakfast",
       icon: "sunny",
-      color: "#f59e0b",
+      color: themedColors.warning,
     },
     {
       key: "lunch" as const,
       label: "Lunch",
       icon: "partly-sunny",
-      color: "#10b981",
+      color: themedColors.success,
     },
     {
       key: "dinner" as const,
@@ -193,62 +87,364 @@ export default function MealPlannerPage() {
     },
   ];
 
-  const addMealToPlan = (meal: Meal) => {
-    const updatedPlans = weekPlans.map((day) => {
-      if (day.date === selectedDay) {
-        return {
-          ...day,
-          meals: {
-            ...day.meals,
-            [selectedMealType]: meal,
-          },
-        };
-      }
-      return day;
+  // Initialize current week
+  useEffect(() => {
+    const { startDate, endDate } = ApiService.getCurrentWeekRange();
+    const start = new Date(startDate);
+    const weekLabel = `Week of ${start.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    })}`;
+
+    setCurrentWeek({
+      startDate,
+      endDate,
+      weekLabel,
     });
-    setWeekPlans(updatedPlans);
-    setModalVisible(false);
+  }, []);
+
+  // Load data when user or week changes
+  useEffect(() => {
+    if (currentUser && currentWeek.startDate) {
+      loadWeekData();
+      loadMealSuggestions();
+    }
+  }, [currentUser, currentWeek.startDate]);
+
+  const loadMealSuggestions = async () => {
+    try {
+      // Get all user's meals and filter by meal type
+      const userMeals = await ApiService.getUserMeals();
+      setSuggestedMeals(userMeals);
+    } catch (error) {
+      console.error("Failed to load user meals:", error);
+      setSuggestedMeals([]);
+    }
   };
 
-  const removeMealFromPlan = (dayDate: string, mealType: string) => {
-    const updatedPlans = weekPlans.map((day) => {
-      if (day.date === dayDate) {
-        const newMeals = { ...day.meals };
-        delete newMeals[mealType as keyof typeof day.meals];
-        return {
-          ...day,
-          meals: newMeals,
-        };
-      }
-      return day;
-    });
-    setWeekPlans(updatedPlans);
+  const loadWeekData = async () => {
+    try {
+      setLoading(true);
+
+      const [mealPlans, stats] = await Promise.all([
+        ApiService.getMealPlans(
+          currentWeek.startDate,
+          currentWeek.endDate
+        ),
+        ApiService.getMealPlanStats(
+          currentWeek.startDate,
+          currentWeek.endDate
+        ),
+      ]);
+
+      console.log(
+        "Week range:",
+        currentWeek.startDate,
+        "to",
+        currentWeek.endDate
+      );
+      console.log(
+        "API returned plans with dates:",
+        mealPlans.map((p) => p.date)
+      );
+
+      // Create complete week structure
+      const weekDays = generateWeekDays(currentWeek.startDate);
+      console.log(
+        "Expected dates:",
+        weekDays.map((d) => d.date)
+      );
+
+      const completeWeekPlans = weekDays.map((day) => {
+        const existingPlan = mealPlans.find((plan) => {
+          const planDate = plan.date.split("T")[0];
+          return planDate === day.date;
+        });
+        return (
+          existingPlan || {
+            _id: `temp-${day.date}`,
+            date: day.date,
+            dayName: day.dayName,
+            meals: {},
+            notes: "",
+            userId: currentUser?.uid || "",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          }
+        );
+      });
+
+      setWeekPlans(completeWeekPlans);
+      setWeekStats(stats);
+    } catch (error) {
+      console.error("Failed to load week data:", error);
+      Alert.alert(
+        "Error",
+        "Failed to load meal plans. Please try again."
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const openMealSelector = (
+  const generateWeekDays = (startDate: string) => {
+    const days = [];
+    const start = new Date(startDate);
+
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(start);
+      date.setDate(start.getDate() + i);
+
+      days.push({
+        date: ApiService.formatDate(date),
+        dayName: date.toLocaleDateString("en-US", { weekday: "long" }),
+        displayDate: date.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        }),
+      });
+    }
+
+    return days;
+  };
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadWeekData();
+    setRefreshing(false);
+  }, [currentWeek]);
+
+  const navigateWeek = (direction: "prev" | "next") => {
+    const currentStart = new Date(currentWeek.startDate);
+    const newStart = new Date(currentStart);
+    newStart.setDate(
+      currentStart.getDate() + (direction === "next" ? 7 : -7)
+    );
+
+    const newEnd = new Date(newStart);
+    newEnd.setDate(newStart.getDate() + 6);
+
+    const weekLabel = `Week of ${newStart.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    })}`;
+
+    setCurrentWeek({
+      startDate: ApiService.formatDate(newStart),
+      endDate: ApiService.formatDate(newEnd),
+      weekLabel: weekLabel,
+    });
+  };
+
+  const openMealSelector = async (
     dayDate: string,
     mealType: "breakfast" | "lunch" | "dinner" | "snack"
   ) => {
     setSelectedDay(dayDate);
     setSelectedMealType(mealType);
     setModalVisible(true);
+    console.log("meal type: ", mealType);
+  };
+
+  const addMealToPlan = async (meal: Meal) => {
+    try {
+      const dayPlan = weekPlans.find(
+        (plan) => plan.date === selectedDay
+      );
+      if (!dayPlan) return;
+
+      const mealPlanData = {
+        date: selectedDay,
+        dayName: dayPlan.dayName,
+        meals: {
+          ...dayPlan.meals,
+          [selectedMealType]: meal,
+        },
+        notes: dayPlan.notes || "",
+      };
+
+      let updatedPlan;
+      if (dayPlan._id?.startsWith("temp-")) {
+        // Create new meal plan
+        updatedPlan = await ApiService.createMealPlan(mealPlanData);
+      } else {
+        // Update existing meal plan
+        if (!dayPlan._id) return;
+        updatedPlan = await ApiService.updateMealPlan(
+          dayPlan._id,
+          mealPlanData
+        );
+      }
+
+      // Update local state
+      setWeekPlans((prev) =>
+        prev.map((plan) =>
+          plan.date === selectedDay ? updatedPlan : plan
+        )
+      );
+
+      setModalVisible(false);
+      Alert.alert(
+        "Success",
+        `${meal.name} added to ${selectedMealType}!`
+      );
+      await loadWeekData();
+    } catch (error) {
+      console.error("Failed to add meal to plan:", error);
+      Alert.alert(
+        "Error",
+        "Failed to add meal to plan. Please try again."
+      );
+    }
+  };
+
+  const removeMealFromPlan = async (
+    dayDate: string,
+    mealType: string
+  ) => {
+    try {
+      const dayPlan = weekPlans.find((plan) => plan.date === dayDate);
+      if (!dayPlan || dayPlan._id?.startsWith("temp-")) return;
+
+      if (!dayPlan._id) return;
+      await ApiService.removeMealFromPlan(
+        dayPlan._id,
+        mealType as "breakfast" | "lunch" | "dinner" | "snack"
+      );
+
+      // Update local state
+      setWeekPlans((prev) =>
+        prev.map((plan) => {
+          if (plan.date === dayDate) {
+            const newMeals = { ...plan.meals };
+            delete newMeals[mealType as keyof typeof plan.meals];
+            return { ...plan, meals: newMeals };
+          }
+          return plan;
+        })
+      );
+
+      Alert.alert("Success", "Meal removed from plan!");
+    } catch (error) {
+      console.error("Failed to remove meal from plan:", error);
+      Alert.alert("Error", "Failed to remove meal. Please try again.");
+    }
+  };
+
+  const generateWeekPlan = async () => {
+    try {
+      Alert.alert(
+        "Generate Week Plan",
+        "This will create a complete meal plan for the week. Continue?",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Generate",
+            onPress: async () => {
+              setLoading(true);
+              try {
+                const generatedPlans =
+                  await ApiService.generateWeekMealPlan({
+                    startDate: currentWeek.startDate,
+                    preferences: {
+                      difficulty: "Easy",
+                      maxPrepTime: "30 min",
+                    },
+                  });
+
+                await loadWeekData();
+                Alert.alert("Success", "Week meal plan generated!");
+              } catch (error) {
+                console.error("Failed to generate week plan:", error);
+                Alert.alert("Error", "Failed to generate meal plan.");
+              } finally {
+                setLoading(false);
+              }
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      console.error("Error in generateWeekPlan:", error);
+    }
+  };
+
+  const copyLastWeek = async () => {
+    try {
+      const lastWeekStart = new Date(currentWeek.startDate);
+      lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+      const lastWeekEnd = new Date(lastWeekStart);
+      lastWeekEnd.setDate(lastWeekStart.getDate() + 6);
+
+      const lastWeekPlans = await ApiService.getMealPlans(
+        ApiService.formatDate(lastWeekStart),
+        ApiService.formatDate(lastWeekEnd)
+      );
+
+      if (lastWeekPlans.length === 0) {
+        Alert.alert(
+          "No Data",
+          "No meal plans found for last week to copy."
+        );
+        return;
+      }
+
+      Alert.alert(
+        "Copy Last Week",
+        `Copy ${lastWeekPlans.length} meal plans from last week?`,
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Copy",
+            onPress: async () => {
+              setLoading(true);
+              try {
+                const newPlans = await Promise.all(
+                  lastWeekPlans.map(async (plan, index) => {
+                    const newDate = new Date(currentWeek.startDate);
+                    newDate.setDate(newDate.getDate() + index);
+                    return ApiService.copyMealPlan(
+                      plan.date,
+                      ApiService.formatDate(newDate)
+                    );
+                  })
+                );
+
+                await loadWeekData();
+                Alert.alert(
+                  "Success",
+                  "Last week's meal plans copied!"
+                );
+              } catch (error) {
+                console.error("Failed to copy last week:", error);
+                Alert.alert("Error", "Failed to copy meal plans.");
+              } finally {
+                setLoading(false);
+              }
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      console.error("Error in copyLastWeek:", error);
+    }
   };
 
   const getMealTypeColor = (type: string) => {
     const mealType = mealTypes.find((mt) => mt.key === type);
-    return mealType?.color || THEME_COLOR;
+    return mealType?.color || themedColors.primary;
   };
 
   const renderMealSlot = (
-    day: DayPlan,
+    day: MealPlan,
     mealType: "breakfast" | "lunch" | "dinner" | "snack"
   ) => {
     const meal = day.meals[mealType];
     const mealTypeInfo = mealTypes.find((mt) => mt.key === mealType)!;
 
     return (
-      <ThemedView key={mealType} style={styles.mealSlot}>
-        <ThemedView style={styles.mealTypeHeader}>
+      <ThemedView key={mealType} style={mealPrepStyles.mealSlot}>
+        <ThemedView style={mealPrepStyles.mealTypeHeader}>
           <Ionicons
             name={mealTypeInfo.icon as IoniconsName}
             size={16}
@@ -257,7 +453,7 @@ export default function MealPlannerPage() {
           <ThemedText
             type="default"
             style={[
-              styles.mealTypeLabel,
+              mealPrepStyles.mealTypeLabel,
               { color: mealTypeInfo.color },
             ]}
           >
@@ -267,43 +463,62 @@ export default function MealPlannerPage() {
         {meal ? (
           <TouchableOpacity
             style={[
-              styles.mealCard,
-              { borderColor: mealTypeInfo.color },
+              mealPrepStyles.mealCard,
+              {
+                borderColor: mealTypeInfo.color,
+                backgroundColor: themedColors.backgroundSecondary,
+              },
             ]}
-            onLongPress={() => removeMealFromPlan(day.date, mealType)}
+            onLongPress={() => {
+              Alert.alert(
+                "Remove Meal",
+                `Remove ${meal.name} from ${mealTypeInfo.label}?`,
+                [
+                  { text: "Cancel", style: "cancel" },
+                  {
+                    text: "Remove",
+                    style: "destructive",
+                    onPress: () =>
+                      removeMealFromPlan(day.date, mealType),
+                  },
+                ]
+              );
+            }}
           >
-            <ThemedText style={styles.mealEmoji}>
-              {meal.emoji}
+            <ThemedText style={mealPrepStyles.mealEmoji}>
+              {meal.emoji || "🍽️"}
             </ThemedText>
-            <ThemedView style={styles.mealInfo}>
+            <ThemedView style={mealPrepStyles.mealInfo}>
               <ThemedText
                 type="defaultSemiBold"
-                style={styles.mealName}
+                style={mealPrepStyles.mealName}
               >
                 {meal.name}
               </ThemedText>
-              <ThemedText type="default" style={styles.mealTime}>
-                {meal.prepTime}
+              <ThemedText
+                type="default"
+                style={mealPrepStyles.mealTime}
+              >
+                {meal.prepTime || "N/A"}
               </ThemedText>
             </ThemedView>
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
             style={[
-              styles.emptyMealSlot,
-              { borderColor: mealTypeInfo.color },
+              mealPrepStyles.emptyMealSlot,
+              {
+                borderColor: mealTypeInfo.color,
+                backgroundColor: themedColors.backgroundTertiary,
+              },
             ]}
             onPress={() => openMealSelector(day.date, mealType)}
           >
-            <Ionicons
-              name={"add" as IoniconsName}
-              size={20}
-              color={mealTypeInfo.color}
-            />
+            <Ionicons name="add" size={20} color={mealTypeInfo.color} />
             <ThemedText
               type="default"
               style={[
-                styles.addMealText,
+                mealPrepStyles.addMealText,
                 { color: mealTypeInfo.color },
               ]}
             >
@@ -317,30 +532,39 @@ export default function MealPlannerPage() {
 
   const renderMealSuggestion = ({ item }: { item: Meal }) => (
     <TouchableOpacity
-      style={styles.suggestionCard}
+      style={[
+        mealPrepStyles.suggestionCard,
+        {
+          backgroundColor: themedColors.backgroundSecondary,
+          borderColor: themedColors.border,
+        },
+      ]}
       onPress={() => addMealToPlan(item)}
     >
-      <ThemedText style={styles.suggestionEmoji}>
-        {item.emoji}
+      <ThemedText style={mealPrepStyles.suggestionEmoji}>
+        {item.emoji || "🍽️"}
       </ThemedText>
-      <ThemedView style={styles.suggestionInfo}>
+      <ThemedView style={mealPrepStyles.suggestionInfo}>
         <ThemedText
           type="defaultSemiBold"
-          style={styles.suggestionName}
+          style={mealPrepStyles.suggestionName}
         >
           {item.name}
         </ThemedText>
-        <ThemedView style={styles.suggestionDetails}>
-          <ThemedText type="default" style={styles.suggestionTime}>
-            {item.prepTime}
+        <ThemedView style={mealPrepStyles.suggestionDetails}>
+          <ThemedText
+            type="default"
+            style={mealPrepStyles.suggestionTime}
+          >
+            {item.prepTime || "N/A"}
           </ThemedText>
           <ThemedView
             style={[
-              styles.difficultyBadge,
+              mealPrepStyles.difficultyBadge,
               { backgroundColor: getDifficultyColor(item.difficulty) },
             ]}
           >
-            <ThemedText style={styles.difficultyText}>
+            <ThemedText style={mealPrepStyles.difficultyText}>
               {item.difficulty}
             </ThemedText>
           </ThemedView>
@@ -352,513 +576,295 @@ export default function MealPlannerPage() {
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
       case "Easy":
-        return "#10b981";
+        return themedColors.success;
       case "Medium":
-        return "#f59e0b";
+        return themedColors.warning;
       case "Hard":
-        return "#ef4444";
+        return themedColors.error;
       default:
-        return THEME_COLOR;
+        return themedColors.primary;
     }
   };
 
-  const filteredMeals = suggestedMeals.filter(
-    (meal) => meal.type === selectedMealType
-  );
+  if (loading) {
+    return <LoadingSpinner message="Loading meal plans..." />;
+  }
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar
         barStyle={
-          colorScheme === "dark" ? "light-content" : "dark-content"
+          themedColors.text === "#1A1A21"
+            ? "dark-content"
+            : "light-content"
         }
       />
 
       {/* Header */}
-      <ThemedView style={styles.header}>
-        <ThemedView style={styles.headerLeft}>
+      <Header
+        title="Meal Planner"
+        subtitle="Plan your week ahead"
+        rightActions={
           <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.navigate("/")}
+            style={{ padding: 8 }}
+            onPress={() => console.log("Calendar action")}
           >
             <Ionicons
-              name={"chevron-back" as IoniconsName}
+              name="calendar"
               size={24}
-              color={colorScheme === "dark" ? "#fff" : "#333"}
+              color={themedColors.primary}
             />
           </TouchableOpacity>
-          <ThemedView style={styles.headerText}>
-            <ThemedText type="title" style={styles.headerTitle}>
-              Meal Planner
-            </ThemedText>
-            <ThemedText type="default" style={styles.headerSubtitle}>
-              Plan your week ahead
-            </ThemedText>
-          </ThemedView>
-        </ThemedView>
-        <TouchableOpacity style={styles.headerAction}>
-          <Ionicons
-            name={"calendar" as IoniconsName}
-            size={24}
-            color={THEME_COLOR}
-          />
-        </TouchableOpacity>
-      </ThemedView>
+        }
+      />
 
       <ScrollView
-        style={styles.content}
+        style={styles.container}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[themedColors.primary]}
+          />
+        }
       >
         {/* Week Navigation */}
-        <ThemedView style={styles.weekNavigation}>
-          <TouchableOpacity style={styles.weekNavButton}>
+        <ThemedView style={mealPrepStyles.weekNavigation}>
+          <TouchableOpacity
+            style={mealPrepStyles.weekNavButton}
+            onPress={() => navigateWeek("prev")}
+          >
             <Ionicons
-              name={"chevron-back" as IoniconsName}
+              name="chevron-back"
               size={20}
-              color={colorScheme === "dark" ? "#fff" : "#666"}
+              color={themedColors.text}
             />
           </TouchableOpacity>
-          <ThemedText type="subtitle" style={styles.weekTitle}>
-            This Week
+          <ThemedText type="subtitle" style={mealPrepStyles.weekTitle}>
+            {currentWeek.weekLabel}
           </ThemedText>
-          <TouchableOpacity style={styles.weekNavButton}>
+          <TouchableOpacity
+            style={mealPrepStyles.weekNavButton}
+            onPress={() => navigateWeek("next")}
+          >
             <Ionicons
-              name={"chevron-forward" as IoniconsName}
+              name="chevron-forward"
               size={20}
-              color={colorScheme === "dark" ? "#fff" : "#666"}
+              color={themedColors.text}
             />
           </TouchableOpacity>
         </ThemedView>
 
         {/* Week Overview Stats */}
-        <ThemedView style={styles.statsContainer}>
-          <ThemedView style={styles.statCard}>
-            <ThemedText type="default" style={styles.statNumber}>
-              18
+        <ThemedView style={mealPrepStyles.statsContainer}>
+          <ThemedView
+            style={[
+              mealPrepStyles.statCard,
+              { borderColor: themedColors.border },
+            ]}
+          >
+            <ThemedText
+              type="default"
+              style={[
+                mealPrepStyles.statNumber,
+                { color: themedColors.primary },
+              ]}
+            >
+              {weekStats.totalMeals}
             </ThemedText>
-            <ThemedText type="default" style={styles.statLabel}>
+            <ThemedText type="default" style={mealPrepStyles.statLabel}>
               Meals Planned
             </ThemedText>
           </ThemedView>
-          <ThemedView style={styles.statCard}>
-            <ThemedText type="default" style={styles.statNumber}>
-              4
+          <ThemedView
+            style={[
+              mealPrepStyles.statCard,
+              { borderColor: themedColors.border },
+            ]}
+          >
+            <ThemedText
+              type="default"
+              style={[
+                mealPrepStyles.statNumber,
+                { color: themedColors.primary },
+              ]}
+            >
+              {weekStats.completeDays}
             </ThemedText>
-            <ThemedText type="default" style={styles.statLabel}>
+            <ThemedText type="default" style={mealPrepStyles.statLabel}>
               Days Complete
-            </ThemedText>
-          </ThemedView>
-          <ThemedView style={styles.statCard}>
-            <ThemedText type="default" style={styles.statNumber}>
-              25m
-            </ThemedText>
-            <ThemedText type="default" style={styles.statLabel}>
-              Avg Prep Time
             </ThemedText>
           </ThemedView>
         </ThemedView>
 
         {/* Quick Actions */}
-        <ThemedView style={styles.quickActions}>
-          <ThemedText type="subtitle" style={styles.quickActionsTitle}>
+        <ThemedView
+          style={[
+            mealPrepStyles.quickActions,
+            { paddingHorizontal: theme.spacing.lg },
+          ]}
+        >
+          <ThemedText
+            type="subtitle"
+            style={mealPrepStyles.quickActionsTitle}
+          >
             Quick Actions
           </ThemedText>
-          <ThemedView style={styles.actionButtons}>
-            <TouchableOpacity style={styles.actionButton}>
-              <Ionicons
-                name={"restaurant" as IoniconsName}
-                size={20}
-                color={THEME_COLOR}
-              />
-              <ThemedText
-                type="defaultSemiBold"
-                style={styles.actionButtonText}
-              >
-                Generate Week
-              </ThemedText>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionButton}>
-              <Ionicons
-                name={"copy" as IoniconsName}
-                size={20}
-                color={THEME_COLOR}
-              />
-              <ThemedText
-                type="defaultSemiBold"
-                style={styles.actionButtonText}
-              >
-                Copy Last Week
-              </ThemedText>
-            </TouchableOpacity>
+          <ThemedView style={mealPrepStyles.actionButtons}>
+            <ActionButton
+              title="Generate Week"
+              icon="restaurant"
+              variant="outline"
+              onPress={generateWeekPlan}
+              style={{ flex: 1, marginRight: theme.spacing.sm }}
+            />
+            <ActionButton
+              title="Copy Last Week"
+              icon="copy"
+              variant="outline"
+              onPress={copyLastWeek}
+              style={{ flex: 1, marginLeft: theme.spacing.sm }}
+            />
           </ThemedView>
+          <ActionButton
+            title="Add New Meal"
+            icon="add"
+            variant="primary"
+            onPress={() => router.push("/create-meal")}
+            style={{ marginTop: theme.spacing.md }}
+          />
         </ThemedView>
 
         {/* Daily Meal Plans */}
-        <ThemedView style={styles.daysContainer}>
-          {weekPlans.map((day, index) => (
-            <ThemedView key={day.date} style={styles.dayCard}>
-              <ThemedView style={styles.dayHeader}>
-                <ThemedView style={styles.dayInfo}>
-                  <ThemedText
-                    type="defaultSemiBold"
-                    style={styles.dayName}
-                  >
-                    {day.dayName}
-                  </ThemedText>
-                  <ThemedText type="default" style={styles.dayDate}>
-                    {day.date}
-                  </ThemedText>
-                </ThemedView>
-                <ThemedView style={styles.dayProgress}>
-                  <ThemedText
-                    type="default"
-                    style={styles.progressText}
-                  >
-                    {Object.keys(day.meals).length}/4 meals
-                  </ThemedText>
-                  <ThemedView style={styles.progressBar}>
+        <ThemedView
+          style={[
+            mealPrepStyles.daysContainer,
+            { paddingHorizontal: theme.spacing.lg },
+          ]}
+        >
+          {weekPlans.map((day) => {
+            const mealsCount = Object.keys(day.meals).length;
+            const weekDay = generateWeekDays(
+              currentWeek.startDate
+            ).find((d) => d.date === day.date);
+
+            return (
+              <ThemedView
+                key={day.date}
+                style={[
+                  mealPrepStyles.dayCard,
+                  {
+                    backgroundColor: themedColors.backgroundSecondary,
+                    borderColor: themedColors.border,
+                  },
+                ]}
+              >
+                <ThemedView style={mealPrepStyles.dayHeader}>
+                  <ThemedView style={mealPrepStyles.dayInfo}>
+                    <ThemedText
+                      type="defaultSemiBold"
+                      style={mealPrepStyles.dayName}
+                    >
+                      {day.dayName}
+                    </ThemedText>
+                    <ThemedText
+                      type="default"
+                      style={mealPrepStyles.dayDate}
+                    >
+                      {weekDay?.displayDate || day.date}
+                    </ThemedText>
+                  </ThemedView>
+                  <ThemedView style={mealPrepStyles.dayProgress}>
+                    <ThemedText
+                      type="default"
+                      style={mealPrepStyles.progressText}
+                    >
+                      {mealsCount}/4 meals
+                    </ThemedText>
                     <ThemedView
                       style={[
-                        styles.progressFill,
+                        mealPrepStyles.progressBar,
                         {
-                          width: `${
-                            (Object.keys(day.meals).length / 4) * 100
-                          }%`,
-                          backgroundColor: THEME_COLOR,
+                          backgroundColor:
+                            themedColors.backgroundTertiary,
                         },
                       ]}
-                    />
+                    >
+                      <ThemedView
+                        style={[
+                          mealPrepStyles.progressFill,
+                          {
+                            width: `${(mealsCount / 4) * 100}%`,
+                            backgroundColor: themedColors.primary,
+                          },
+                        ]}
+                      />
+                    </ThemedView>
                   </ThemedView>
                 </ThemedView>
-              </ThemedView>
 
-              <ThemedView style={styles.mealsGrid}>
-                {mealTypes.map((mealType) =>
-                  renderMealSlot(day, mealType.key)
-                )}
+                <ThemedView style={mealPrepStyles.mealsGrid}>
+                  {mealTypes.map((mealType) =>
+                    renderMealSlot(day, mealType.key)
+                  )}
+                </ThemedView>
               </ThemedView>
-            </ThemedView>
-          ))}
+            );
+          })}
         </ThemedView>
+
+        {/* Bottom Spacing */}
+        <ThemedView style={{ height: 100 }} />
       </ScrollView>
 
       {/* Meal Selection Modal */}
       <Modal
-        animationType="slide"
-        transparent={true}
         visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
+        onClose={() => setModalVisible(false)}
+        title={`Choose ${selectedMealType}`}
+        size="large"
       >
-        <ThemedView style={styles.modalOverlay}>
-          <ThemedView style={styles.modalContent}>
-            <ThemedView style={styles.modalHeader}>
-              <ThemedText type="subtitle" style={styles.modalTitle}>
-                Choose {selectedMealType}
-              </ThemedText>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Ionicons
-                  name={"close" as IoniconsName}
-                  size={24}
-                  color={colorScheme === "dark" ? "#fff" : "#333"}
-                />
-              </TouchableOpacity>
-            </ThemedView>
-
-            <FlatList
-              data={filteredMeals}
-              renderItem={renderMealSuggestion}
-              keyExtractor={(item) => item.id}
-              showsVerticalScrollIndicator={false}
-              style={styles.suggestionsList}
+        {suggestedMeals.length > 0 ? (
+          <FlatList
+            data={suggestedMeals}
+            renderItem={renderMealSuggestion}
+            keyExtractor={(item) => item._id || `meal-${Math.random()}`}
+            showsVerticalScrollIndicator={false}
+            style={{ maxHeight: 400 }}
+          />
+        ) : (
+          <ThemedView style={{ alignItems: "center", padding: 20 }}>
+            <Ionicons
+              name="restaurant-outline"
+              size={48}
+              color={themedColors.textSecondary}
+            />
+            <ThemedText style={{ marginTop: 16, textAlign: "center" }}>
+              No {selectedMealType} meals found
+            </ThemedText>
+            <ThemedText
+              style={{
+                marginTop: 8,
+                textAlign: "center",
+                opacity: 0.7,
+              }}
+            >
+              Create your first {selectedMealType} meal to add it to
+              your planner
+            </ThemedText>
+            <ActionButton
+              title="Create New Meal"
+              icon="add"
+              onPress={() => {
+                setModalVisible(false);
+                router.push("/create-meal");
+              }}
+              style={{ marginTop: 16 }}
             />
           </ThemedView>
-        </ThemedView>
+        )}
       </Modal>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(128, 128, 128, 0.2)",
-  },
-  headerLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "transparent",
-    flex: 1,
-  },
-  backButton: {
-    marginRight: 12,
-  },
-  headerText: {
-    backgroundColor: "transparent",
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    opacity: 0.7,
-  },
-  headerAction: {
-    padding: 8,
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 16,
-  },
-  weekNavigation: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 20,
-    backgroundColor: "transparent",
-  },
-  weekNavButton: {
-    padding: 8,
-  },
-  weekTitle: {
-    fontSize: 18,
-  },
-  statsContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 24,
-    backgroundColor: "transparent",
-  },
-  statCard: {
-    flex: 1,
-    alignItems: "center",
-    paddingVertical: 16,
-    marginHorizontal: 4,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "rgba(128, 128, 128, 0.2)",
-  },
-  statNumber: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: THEME_COLOR,
-  },
-  statLabel: {
-    fontSize: 12,
-    opacity: 0.7,
-    marginTop: 4,
-  },
-  daysContainer: {
-    marginBottom: 24,
-    backgroundColor: "transparent",
-  },
-  dayCard: {
-    marginBottom: 20,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "rgba(128, 128, 128, 0.2)",
-    overflow: "hidden",
-  },
-  dayHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(128, 128, 128, 0.1)",
-    backgroundColor: "transparent",
-  },
-  dayInfo: {
-    backgroundColor: "transparent",
-  },
-  dayName: {
-    fontSize: 16,
-  },
-  dayDate: {
-    fontSize: 14,
-    opacity: 0.7,
-  },
-  dayProgress: {
-    alignItems: "flex-end",
-    backgroundColor: "transparent",
-  },
-  progressText: {
-    fontSize: 12,
-    opacity: 0.7,
-    marginBottom: 4,
-  },
-  progressBar: {
-    width: 60,
-    height: 4,
-    backgroundColor: "rgba(128, 128, 128, 0.2)",
-    borderRadius: 2,
-  },
-  progressFill: {
-    height: "100%",
-    borderRadius: 2,
-  },
-  mealsGrid: {
-    padding: 16,
-    backgroundColor: "transparent",
-  },
-  mealSlot: {
-    marginBottom: 12,
-    backgroundColor: "transparent",
-  },
-  mealTypeHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 8,
-    backgroundColor: "transparent",
-  },
-  mealTypeLabel: {
-    fontSize: 14,
-    fontWeight: "600",
-    marginLeft: 6,
-  },
-  mealCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    backgroundColor: "rgba(128, 128, 128, 0.05)",
-  },
-  mealEmoji: {
-    fontSize: 24,
-    marginRight: 12,
-  },
-  mealInfo: {
-    flex: 1,
-    backgroundColor: "transparent",
-  },
-  mealName: {
-    fontSize: 14,
-  },
-  mealTime: {
-    fontSize: 12,
-    opacity: 0.7,
-  },
-  emptyMealSlot: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderStyle: "dashed",
-    backgroundColor: "rgba(128, 128, 128, 0.02)",
-  },
-  addMealText: {
-    fontSize: 14,
-    marginLeft: 8,
-    fontWeight: "500",
-  },
-  quickActions: {
-    marginBottom: 20,
-    backgroundColor: "transparent",
-  },
-  quickActionsTitle: {
-    fontSize: 18,
-    marginBottom: 16,
-  },
-  actionButtons: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    backgroundColor: "transparent",
-  },
-  actionButton: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 16,
-    marginHorizontal: 8,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: THEME_COLOR,
-    backgroundColor: "rgba(255, 185, 2, 0.1)",
-  },
-  actionButtonText: {
-    fontSize: 14,
-    color: THEME_COLOR,
-    marginLeft: 8,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "flex-end",
-  },
-  modalContent: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: "70%",
-    paddingTop: 20,
-    backgroundColor: "#ffffff",
-  },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(128, 128, 128, 0.2)",
-    backgroundColor: "transparent",
-  },
-  modalTitle: {
-    fontSize: 18,
-  },
-  suggestionsList: {
-    padding: 20,
-  },
-  suggestionCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 16,
-    marginBottom: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "rgba(128, 128, 128, 0.2)",
-  },
-  suggestionEmoji: {
-    fontSize: 28,
-    marginRight: 16,
-  },
-  suggestionInfo: {
-    flex: 1,
-    backgroundColor: "transparent",
-  },
-  suggestionName: {
-    fontSize: 16,
-    marginBottom: 4,
-  },
-  suggestionDetails: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "transparent",
-  },
-  suggestionTime: {
-    fontSize: 14,
-    opacity: 0.7,
-    marginRight: 12,
-  },
-  difficultyBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-  },
-  difficultyText: {
-    fontSize: 12,
-    color: "white",
-    fontWeight: "600",
-  },
-});

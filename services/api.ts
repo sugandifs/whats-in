@@ -1,8 +1,12 @@
 import { auth } from "../config/firebase";
 import {
+  CreateMealData,
+  CreateMealPlanData,
   CreatePantryItemData,
   CreateProfileData,
   CreateRecipeData,
+  Meal,
+  MealPlan,
   PantryItem,
   PantryStats,
   Recipe,
@@ -275,16 +279,216 @@ class ApiService {
     });
   }
 
-  // Meal plans methods (for future use)
-  async getMealPlans(): Promise<any[]> {
-    return this.request<any[]>("/meal-plans");
+  // ============ MEAL METHODS ============
+  async getUserMeals(): Promise<Meal[]> {
+    return this.request<Meal[]>("/meals");
   }
 
-  async createMealPlan(planData: any): Promise<any> {
-    return this.request<any>("/meal-plans", {
+  async getMeal(mealId: string): Promise<Meal> {
+    return this.request<Meal>(`/meals/${mealId}`);
+  }
+
+  async createMeal(mealData: CreateMealData): Promise<Meal> {
+    return this.request<Meal>("/meals", {
       method: "POST",
-      body: JSON.stringify(planData),
+      body: JSON.stringify(mealData),
     });
+  }
+
+  async updateMeal(
+    mealId: string,
+    updateData: Partial<CreateMealData>
+  ): Promise<Meal> {
+    return this.request<Meal>(`/meals/${mealId}`, {
+      method: "PUT",
+      body: JSON.stringify(updateData),
+    });
+  }
+
+  async deleteMeal(mealId: string): Promise<{ message: string }> {
+    return this.request<{ message: string }>(`/meals/${mealId}`, {
+      method: "DELETE",
+    });
+  }
+
+  // ============ MEAL PLAN METHODS ============
+
+  async getMealPlans(
+    startDate: string,
+    endDate: string
+  ): Promise<MealPlan[]> {
+    return this.request<MealPlan[]>(
+      `/meal-plans?startDate=${startDate}&endDate=${endDate}`
+    );
+  }
+
+  /**
+   * Get meal plan for a specific date
+   */
+  async getMealPlan(date: string): Promise<MealPlan> {
+    return this.request<MealPlan>(`/meal-plans/${date}`);
+  }
+
+  async createMealPlan(
+    mealPlanData: CreateMealPlanData
+  ): Promise<MealPlan> {
+    return this.request<MealPlan>("/meal-plans", {
+      method: "POST",
+      body: JSON.stringify(mealPlanData),
+    });
+  }
+
+  async updateMealPlan(
+    mealPlanId: string,
+    updateData: Partial<CreateMealPlanData>
+  ): Promise<MealPlan> {
+    return this.request<MealPlan>(`/meal-plans/${mealPlanId}`, {
+      method: "PUT",
+      body: JSON.stringify(updateData),
+    });
+  }
+
+  async deleteMealPlan(
+    mealPlanId: string
+  ): Promise<{ message: string }> {
+    return this.request<{ message: string }>(
+      `/meal-plans/${mealPlanId}`,
+      {
+        method: "DELETE",
+      }
+    );
+  }
+
+  async removeMealFromPlan(
+    mealPlanId: string,
+    mealType: "breakfast" | "lunch" | "dinner" | "snack"
+  ): Promise<MealPlan> {
+    return this.request<MealPlan>(
+      `/meal-plans/${mealPlanId}/meals/${mealType}`,
+      {
+        method: "DELETE",
+      }
+    );
+  }
+
+  async getMealPlanStats(
+    startDate?: string,
+    endDate?: string
+  ): Promise<{
+    totalPlans: number;
+    totalMeals: number;
+    completeDays: number;
+    avgMealsPerDay: number;
+  }> {
+    let url = "/meal-plans/stats/overview";
+
+    if (startDate && endDate) {
+      url += `?startDate=${startDate}&endDate=${endDate}`;
+    }
+
+    return this.request(url);
+  }
+
+  async copyMealPlan(
+    fromDate: string,
+    toDate: string
+  ): Promise<MealPlan> {
+    try {
+      // Get the source meal plan
+      const sourcePlan = await this.getMealPlan(fromDate);
+
+      // Create new plan with copied data
+      const newPlanData: CreateMealPlanData = {
+        date: toDate,
+        dayName: new Date(toDate).toLocaleDateString("en-US", {
+          weekday: "long",
+        }),
+        meals: sourcePlan.meals,
+        notes: sourcePlan.notes || "",
+      };
+
+      return await this.createMealPlan(newPlanData);
+    } catch (error) {
+      console.error("Error copying meal plan:", error);
+      throw error;
+    }
+  }
+
+  async createMealPlans(
+    mealPlansData: CreateMealPlanData[]
+  ): Promise<MealPlan[]> {
+    try {
+      const promises = mealPlansData.map((planData) =>
+        this.createMealPlan(planData)
+      );
+      return await Promise.all(promises);
+    } catch (error) {
+      console.error("Error creating multiple meal plans:", error);
+      throw error;
+    }
+  }
+
+  async generateWeekMealPlan(options: {
+    startDate: string;
+    preferences?: {
+      dietaryRestrictions?: string[];
+      excludeIngredients?: string[];
+      includeIngredients?: string[];
+      maxPrepTime?: string;
+      difficulty?: "Easy" | "Medium" | "Hard";
+    };
+  }): Promise<MealPlan[]> {
+    return this.request<MealPlan[]>("/meal-plans/generate-week", {
+      method: "POST",
+      body: JSON.stringify(options),
+    });
+  }
+
+  getCurrentWeekRange(): { startDate: string; endDate: string } {
+    const today = new Date();
+    const startOfWeek = new Date(
+      today.setDate(today.getDate() - today.getDay() + 1)
+    );
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6);
+
+    return {
+      startDate: startOfWeek.toISOString().split("T")[0],
+      endDate: endOfWeek.toISOString().split("T")[0],
+    };
+  }
+
+  getNextWeekRange(): { startDate: string; endDate: string } {
+    const today = new Date();
+    const startOfNextWeek = new Date(
+      today.setDate(today.getDate() - today.getDay() + 8)
+    );
+    const endOfNextWeek = new Date(startOfNextWeek);
+    endOfNextWeek.setDate(startOfNextWeek.getDate() + 6);
+
+    return {
+      startDate: startOfNextWeek.toISOString().split("T")[0],
+      endDate: endOfNextWeek.toISOString().split("T")[0],
+    };
+  }
+
+  formatDate(date: Date): string {
+    return date.toISOString().split("T")[0];
+  }
+
+  parseDate(dateString: string): Date {
+    return new Date(dateString + "T00:00:00.000Z");
+  }
+
+  private getMealTypeFromTags(
+    tags?: string[]
+  ): "breakfast" | "lunch" | "dinner" | "snack" | null {
+    if (!tags) return null;
+    if (tags.includes("breakfast")) return "breakfast";
+    if (tags.includes("lunch")) return "lunch";
+    if (tags.includes("dinner")) return "dinner";
+    if (tags.includes("snack")) return "snack";
+    return null;
   }
 }
 

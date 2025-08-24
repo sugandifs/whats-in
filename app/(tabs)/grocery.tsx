@@ -455,43 +455,6 @@ export default function GroceryListPage() {
         </TouchableOpacity>
       </ThemedView>
 
-      {/* Search Bar */}
-      <ThemedView style={styles.searchContainer}>
-        <ThemedView style={styles.searchBar}>
-          <Ionicons
-            name={"search" as IoniconsName}
-            size={20}
-            color={colorScheme === "dark" ? "#fff" : "#666"}
-          />
-          <TextInput
-            style={[
-              styles.searchInput,
-              { color: colorScheme === "dark" ? "#fff" : "#333" },
-            ]}
-            placeholder="Search items..."
-            placeholderTextColor={
-              colorScheme === "dark" ? "#888" : "#999"
-            }
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-        </ThemedView>
-
-        <TouchableOpacity
-          style={[
-            styles.filterButton,
-            showCompleted && styles.activeFilter,
-          ]}
-          onPress={() => setShowCompleted(!showCompleted)}
-        >
-          <Ionicons
-            name={"eye" as IoniconsName}
-            size={18}
-            color={showCompleted ? "white" : THEME_COLOR}
-          />
-        </TouchableOpacity>
-      </ThemedView>
-
       <ScrollView
         style={styles.content}
         showsVerticalScrollIndicator={false}

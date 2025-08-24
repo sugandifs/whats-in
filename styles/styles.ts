@@ -227,4 +227,12 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     minHeight: 32,
   },
+
+  badge: {
+    paddingHorizontal: baseTheme.spacing.md,
+    borderRadius: baseTheme.borderRadius.full,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+  },
 });
