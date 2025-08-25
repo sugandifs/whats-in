@@ -295,12 +295,8 @@ export default function MealPrepHome() {
         rightActions={
           <>
             <HeaderAction
-              icon="search"
+              icon="settings"
               onPress={() => router.push("/recipes")}
-            />
-            <HeaderAction
-              icon="notifications"
-              onPress={() => console.log("notifications")}
             />
           </>
         }
@@ -373,15 +369,19 @@ export default function MealPrepHome() {
                   { backgroundColor: `${themedColors.primary}20` },
                 ]}
               >
-                <ThemedText style={{ fontSize: 24 }}>
-                  {action.icon === "add"
-                    ? "+"
-                    : action.icon === "cart"
-                    ? "🛒"
-                    : action.icon === "calendar"
-                    ? "📅"
-                    : "📖"}
-                </ThemedText>
+                <Ionicons
+                  name={
+                    action.icon === "add"
+                      ? "add"
+                      : action.icon === "cart"
+                      ? "cart"
+                      : action.icon === "calendar"
+                      ? "calendar"
+                      : "book"
+                  }
+                  size={24}
+                  color={themedColors.primary}
+                />
               </ThemedView>
               <ThemedText
                 style={[

@@ -3,10 +3,10 @@ import React from "react";
 import { Platform } from "react-native";
 
 import { HapticTab } from "@/components/HapticTab";
-import { IconSymbol } from "@/components/ui/IconSymbol";
 import TabBarBackground from "@/components/ui/TabBarBackground";
 import { Colors } from "@/constants/Colors";
 import { useColorScheme } from "@/hooks/useColorScheme";
+import { FontAwesome5 } from "@expo/vector-icons";
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -32,7 +32,7 @@ export default function TabLayout() {
         options={{
           title: "Home",
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="house.fill" color={color} />
+            <FontAwesome5 size={22} name="home" color={color} />
           ),
         }}
       />
@@ -41,7 +41,7 @@ export default function TabLayout() {
         options={{
           title: "Meal Planner",
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="calendar" color={color} />
+            <FontAwesome5 size={22} name="calendar" color={color} />
           ),
         }}
       />
@@ -50,7 +50,7 @@ export default function TabLayout() {
         options={{
           title: "Recipes",
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="book.fill" color={color} />
+            <FontAwesome5 size={22} name="book" color={color} />
           ),
         }}
       />
@@ -59,7 +59,7 @@ export default function TabLayout() {
         options={{
           title: "Pantry",
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="fork.knife" color={color} />
+            <FontAwesome5 size={22} name="utensils" color={color} />
           ),
         }}
       />
@@ -68,7 +68,11 @@ export default function TabLayout() {
         options={{
           title: "Grocery",
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="cart.fill" color={color} />
+            <FontAwesome5
+              size={22}
+              name="shopping-cart"
+              color={color}
+            />
           ),
         }}
       />

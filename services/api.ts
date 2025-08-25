@@ -1,10 +1,13 @@
-import { auth } from "../config/firebase";
+import { auth } from "@/config/firebase";
 import {
+  CreateGroceryItemData,
   CreateMealData,
   CreateMealPlanData,
   CreatePantryItemData,
   CreateProfileData,
   CreateRecipeData,
+  GroceryItem,
+  GroceryStats,
   Meal,
   MealPlan,
   PantryItem,
@@ -489,6 +492,134 @@ class ApiService {
     if (tags.includes("dinner")) return "dinner";
     if (tags.includes("snack")) return "snack";
     return null;
+  }
+
+  // Get all grocery items with optional filters
+  async getGroceryItems(filters?: {
+    category?: string;
+    completed?: boolean;
+    sortBy?: "name" | "category" | "addedDate";
+  }): Promise<GroceryItem[]> {
+    const queryParams = new URLSearchParams();
+
+    if (filters?.category && filters.category !== "all") {
+      queryParams.append("category", filters.category);
+    }
+
+    if (filters?.completed !== undefined) {
+      queryParams.append("completed", filters.completed.toString());
+    }
+
+    if (filters?.sortBy) {
+      queryParams.append("sortBy", filters.sortBy);
+    }
+
+    const query = queryParams.toString()
+      ? `?${queryParams.toString()}`
+      : "";
+    return this.request<GroceryItem[]>(`/grocery${query}`);
+  }
+
+  // Get grocery list statistics
+  async getGroceryStats(): Promise<GroceryStats> {
+    return this.request<GroceryStats>("/grocery/stats");
+  }
+
+  // Search grocery items by name
+  async searchGroceryItems(query: string): Promise<GroceryItem[]> {
+    return this.request<GroceryItem[]>(
+      `/grocery/search?query=${encodeURIComponent(query)}`
+    );
+  }
+
+  // Get a specific grocery item
+  async getGroceryItem(itemId: string): Promise<GroceryItem> {
+    return this.request<GroceryItem>(`/grocery/${itemId}`);
+  }
+
+  // Create a new grocery item
+  async createGroceryItem(
+    itemData: CreateGroceryItemData
+  ): Promise<GroceryItem> {
+    return this.request<GroceryItem>("/grocery", {
+      method: "POST",
+      body: JSON.stringify(itemData),
+    });
+  }
+
+  // Create multiple grocery items at once
+  async createGroceryItemsBulk(
+    items: CreateGroceryItemData[]
+  ): Promise<GroceryItem[]> {
+    return this.request<GroceryItem[]>("/grocery/bulk", {
+      method: "POST",
+      body: JSON.stringify({ items }),
+    });
+  }
+
+  // Update a grocery item
+  async updateGroceryItem(
+    itemId: string,
+    itemData: Partial<CreateGroceryItemData>
+  ): Promise<GroceryItem> {
+    return this.request<GroceryItem>(`/grocery/${itemId}`, {
+      method: "PUT",
+      body: JSON.stringify(itemData),
+    });
+  }
+
+  // Toggle the completion status of a grocery item
+  async toggleGroceryItem(itemId: string): Promise<GroceryItem> {
+    return this.request<GroceryItem>(`/grocery/${itemId}/toggle`, {
+      method: "PATCH",
+    });
+  }
+
+  // Update the quantity of a grocery item
+  async updateGroceryItemQuantity(
+    itemId: string,
+    quantity: number
+  ): Promise<GroceryItem> {
+    return this.request<GroceryItem>(`/grocery/${itemId}/quantity`, {
+      method: "PATCH",
+      body: JSON.stringify({ quantity }),
+    });
+  }
+
+  // Delete a specific grocery item
+  async deleteGroceryItem(
+    itemId: string
+  ): Promise<{ message: string }> {
+    return this.request<{ message: string }>(`/grocery/${itemId}`, {
+      method: "DELETE",
+    });
+  }
+
+  // Delete all completed grocery items
+  async clearCompletedGroceryItems(): Promise<{
+    message: string;
+    deletedCount: number;
+  }> {
+    return this.request<{ message: string; deletedCount: number }>(
+      "/grocery/bulk/completed",
+      {
+        method: "DELETE",
+      }
+    );
+  }
+
+  // Delete multiple grocery items by IDs
+  async deleteGroceryItemsBulk(itemIds: string[]): Promise<{
+    message: string;
+    deletedCount: number;
+  }> {
+    return this.request<{ message: string; deletedCount: number }>(
+      "/grocery/bulk/delete",
+      {
+        method: "DELETE",
+        body: JSON.stringify({ itemIds }),
+      }
+    );
   }
 }
 

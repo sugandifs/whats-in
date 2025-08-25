@@ -1,111 +1,72 @@
+// Updated grocery.tsx with API integration
+
+import { FormInput } from "@/components/forms/FormInput";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
+import { ActionButton } from "@/components/ui/ActionButton";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Header } from "@/components/ui/Header";
+import { HeaderAction } from "@/components/ui/HeaderActions";
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { Modal } from "@/components/ui/Modal";
+import { SearchBar } from "@/components/ui/SearchBar";
+import { useAuth } from "@/context/AuthContext";
+import { useThemedStyles } from "@/hooks/useThemedStyles";
+import ApiService from "@/services/api";
+import {
+  CreateGroceryItemData,
+  GroceryItem,
+  QuickAddItem,
+} from "@/services/types";
+import { styles } from "@/styles";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Alert,
-  Modal,
+  RefreshControl,
   SafeAreaView,
   ScrollView,
   StatusBar,
-  StyleSheet,
-  TextInput,
   TouchableOpacity,
-  useColorScheme,
+  View,
 } from "react-native";
 
 type IoniconsName = keyof typeof Ionicons.glyphMap;
 
-const THEME_COLOR = "#FFB902";
-
-interface GroceryItem {
+interface GroceryCategory {
   id: string;
   name: string;
-  quantity: number;
-  unit: string;
-  category: string;
   emoji: string;
-  isCompleted: boolean;
-  addedDate: Date;
-  notes?: string;
-}
-
-interface QuickAddItem {
-  name: string;
-  emoji: string;
-  category: string;
-  unit: string;
+  color: string;
 }
 
 export default function GroceryListPage() {
   const router = useRouter();
-  const [groceryList, setGroceryList] = useState<GroceryItem[]>([
-    {
-      id: "1",
-      name: "Milk",
-      quantity: 1,
-      unit: "gallon",
-      category: "dairy",
-      emoji: "🥛",
-      isCompleted: false,
-      addedDate: new Date(),
-    },
-    {
-      id: "2",
-      name: "Bananas",
-      quantity: 6,
-      unit: "piece",
-      category: "fresh",
-      emoji: "🍌",
-      isCompleted: true,
-      addedDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-    },
-    {
-      id: "3",
-      name: "Bread",
-      quantity: 1,
-      unit: "loaf",
-      category: "bakery",
-      emoji: "🍞",
-      isCompleted: false,
-      addedDate: new Date(),
-    },
-    {
-      id: "4",
-      name: "Chicken Breast",
-      quantity: 2,
-      unit: "lb",
-      category: "meat",
-      emoji: "🍗",
-      isCompleted: false,
-      addedDate: new Date(),
-    },
-    {
-      id: "5",
-      name: "Apples",
-      quantity: 5,
-      unit: "piece",
-      category: "fresh",
-      emoji: "🍎",
-      isCompleted: true,
-      addedDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-    },
-  ]);
+  const { currentUser } = useAuth();
+  const { themedColors, theme } = useThemedStyles();
 
+  // State management
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [addItemModalVisible, setAddItemModalVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showCompleted, setShowCompleted] = useState(true);
-  const colorScheme = useColorScheme();
+  const [selectedCategory, setSelectedCategory] =
+    useState<string>("all");
+
+  // Data states
+  const [groceryList, setGroceryList] = useState<GroceryItem[]>([]);
 
   // Form state for adding new items
-  const [newItem, setNewItem] = useState({
+  const [newItem, setNewItem] = useState<CreateGroceryItemData>({
     name: "",
     quantity: 1,
     unit: "piece",
     category: "fresh",
     emoji: "🛒",
     notes: "",
+    priority: "medium",
   });
 
   const quickAddItems: QuickAddItem[] = [
@@ -136,9 +97,14 @@ export default function GroceryListPage() {
     "dozen",
     "gallon",
     "loaf",
+    "jar",
+    "can",
+    "pint",
+    "quart",
+    "liter",
   ];
 
-  const categories = [
+  const categories: GroceryCategory[] = [
     {
       id: "fresh",
       name: "Fresh Produce",
@@ -151,9 +117,58 @@ export default function GroceryListPage() {
     { id: "bakery", name: "Bakery", emoji: "🍞", color: "#f59e0b" },
     { id: "frozen", name: "Frozen", emoji: "🧊", color: "#06b6d4" },
     { id: "snacks", name: "Snacks", emoji: "🍿", color: "#f97316" },
+    {
+      id: "beverages",
+      name: "Beverages",
+      emoji: "🥤",
+      color: "#10b981",
+    },
+    {
+      id: "household",
+      name: "Household",
+      emoji: "🧽",
+      color: "#6366f1",
+    },
     { id: "other", name: "Other", emoji: "🛒", color: "#6b7280" },
   ];
 
+  // Load grocery items from API
+  const loadGroceryItems = async () => {
+    try {
+      setLoading(true);
+      if (currentUser) {
+        const filters = {
+          category:
+            selectedCategory !== "all" ? selectedCategory : undefined,
+          sortBy: "addedDate" as const,
+        };
+        const items = await ApiService.getGroceryItems(filters);
+        setGroceryList(items);
+      }
+    } catch (error) {
+      console.error("Failed to load grocery items:", error);
+      Alert.alert(
+        "Error",
+        "Failed to load grocery list. Please try again."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadGroceryItems();
+    setRefreshing(false);
+  };
+
+  useEffect(() => {
+    if (currentUser) {
+      loadGroceryItems();
+    }
+  }, [currentUser, selectedCategory]);
+
+  // Filter items based on search and completion status
   const filteredItems = groceryList.filter((item) => {
     const matchesSearch = item.name
       .toLowerCase()
@@ -169,17 +184,33 @@ export default function GroceryListPage() {
     (item) => item.isCompleted
   );
 
-  const toggleItem = (id: string) => {
-    setGroceryList(
-      groceryList.map((item) =>
-        item.id === id
-          ? { ...item, isCompleted: !item.isCompleted }
-          : item
-      )
-    );
+  const toggleItem = async (id: string) => {
+    try {
+      // Optimistic update
+      setGroceryList((prevList) =>
+        prevList.map((item) =>
+          item._id === id
+            ? { ...item, isCompleted: !item.isCompleted }
+            : item
+        )
+      );
+
+      await ApiService.toggleGroceryItem(id);
+    } catch (error) {
+      console.error("Failed to toggle item:", error);
+      // Revert optimistic update
+      setGroceryList((prevList) =>
+        prevList.map((item) =>
+          item._id === id
+            ? { ...item, isCompleted: !item.isCompleted }
+            : item
+        )
+      );
+      Alert.alert("Error", "Failed to update item. Please try again.");
+    }
   };
 
-  const removeItem = (id: string) => {
+  const removeItem = async (id: string) => {
     Alert.alert(
       "Remove Item",
       "Are you sure you want to remove this item?",
@@ -188,46 +219,63 @@ export default function GroceryListPage() {
         {
           text: "Remove",
           style: "destructive",
-          onPress: () =>
-            setGroceryList(
-              groceryList.filter((item) => item.id !== id)
-            ),
+          onPress: async () => {
+            try {
+              // Optimistic update
+              setGroceryList((prevList) =>
+                prevList.filter((item) => item._id !== id)
+              );
+
+              await ApiService.deleteGroceryItem(id);
+            } catch (error) {
+              console.error("Failed to remove item:", error);
+              Alert.alert(
+                "Error",
+                "Failed to remove item. Please try again."
+              );
+              // Reload the list to revert the optimistic update
+              await loadGroceryItems();
+            }
+          },
         },
       ]
     );
   };
 
-  const addNewItem = () => {
+  const addNewItem = async () => {
     if (!newItem.name.trim()) {
       Alert.alert("Error", "Please enter an item name");
       return;
     }
 
-    const item: GroceryItem = {
-      id: Date.now().toString(),
-      name: newItem.name,
-      quantity: newItem.quantity,
-      unit: newItem.unit,
-      category: newItem.category,
-      emoji: newItem.emoji,
-      isCompleted: false,
-      addedDate: new Date(),
-      notes: newItem.notes,
-    };
+    try {
+      const createdItem = await ApiService.createGroceryItem({
+        ...newItem,
+        name: newItem.name.trim(),
+      });
 
-    setGroceryList([...groceryList, item]);
-    setNewItem({
-      name: "",
-      quantity: 1,
-      unit: "piece",
-      category: "fresh",
-      emoji: "🛒",
-      notes: "",
-    });
-    setAddItemModalVisible(false);
+      setGroceryList((prevList) => [createdItem, ...prevList]);
+
+      // Reset form
+      setNewItem({
+        name: "",
+        quantity: 1,
+        unit: "piece",
+        category: "fresh",
+        emoji: "🛒",
+        notes: "",
+        priority: "medium",
+      });
+
+      setAddItemModalVisible(false);
+      Alert.alert("Success", "Item added to grocery list!");
+    } catch (error) {
+      console.error("Failed to add item:", error);
+      Alert.alert("Error", "Failed to add item. Please try again.");
+    }
   };
 
-  const quickAddItem = (quickItem: QuickAddItem) => {
+  const quickAddItem = async (quickItem: QuickAddItem) => {
     const existingItem = groceryList.find(
       (item) =>
         item.name.toLowerCase() === quickItem.name.toLowerCase() &&
@@ -243,21 +291,25 @@ export default function GroceryListPage() {
       return;
     }
 
-    const item: GroceryItem = {
-      id: Date.now().toString(),
-      name: quickItem.name,
-      quantity: 1,
-      unit: quickItem.unit,
-      category: quickItem.category,
-      emoji: quickItem.emoji,
-      isCompleted: false,
-      addedDate: new Date(),
-    };
+    try {
+      const itemData: CreateGroceryItemData = {
+        name: quickItem.name,
+        quantity: 1,
+        unit: quickItem.unit,
+        category: quickItem.category,
+        emoji: quickItem.emoji,
+        priority: "medium",
+      };
 
-    setGroceryList([...groceryList, item]);
+      const createdItem = await ApiService.createGroceryItem(itemData);
+      setGroceryList((prevList) => [createdItem, ...prevList]);
+    } catch (error) {
+      console.error("Failed to add quick item:", error);
+      Alert.alert("Error", "Failed to add item. Please try again.");
+    }
   };
 
-  const clearCompleted = () => {
+  const clearCompleted = async () => {
     const completedCount = groceryList.filter(
       (item) => item.isCompleted
     ).length;
@@ -277,204 +329,357 @@ export default function GroceryListPage() {
         {
           text: "Clear",
           style: "destructive",
-          onPress: () =>
-            setGroceryList(
-              groceryList.filter((item) => !item.isCompleted)
-            ),
+          onPress: async () => {
+            try {
+              await ApiService.clearCompletedGroceryItems();
+              setGroceryList((prevList) =>
+                prevList.filter((item) => !item.isCompleted)
+              );
+              Alert.alert("Success", "Completed items cleared!");
+            } catch (error) {
+              console.error("Failed to clear completed items:", error);
+              Alert.alert(
+                "Error",
+                "Failed to clear completed items. Please try again."
+              );
+            }
+          },
         },
       ]
     );
   };
 
-  const renderGroceryItem = (item: GroceryItem) => (
-    <ThemedView
-      key={item.id}
-      style={[
-        styles.groceryItem,
-        item.isCompleted && styles.completedItem,
-      ]}
-    >
-      <TouchableOpacity
-        style={styles.itemLeft}
-        onPress={() => toggleItem(item.id)}
+  const renderGroceryItem = (item: GroceryItem) => {
+    const itemDate = new Date(item.addedDate);
+    const formattedDate = itemDate.toLocaleDateString();
+
+    return (
+      <ThemedView
+        key={item._id}
+        style={[
+          {
+            flexDirection: "row",
+            alignItems: "center",
+            paddingVertical: 12,
+            paddingHorizontal: 16,
+            marginBottom: 8,
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: themedColors.border,
+            backgroundColor: themedColors.backgroundSecondary,
+          },
+          item.isCompleted && {
+            opacity: 0.6,
+            backgroundColor: themedColors.backgroundTertiary,
+          },
+        ]}
       >
-        <ThemedView
-          style={[
-            styles.checkbox,
-            item.isCompleted && styles.checkedCheckbox,
-          ]}
+        <TouchableOpacity
+          style={{
+            flex: 1,
+            flexDirection: "row",
+            alignItems: "center",
+          }}
+          onPress={() => toggleItem(item._id)}
         >
-          {item.isCompleted && (
-            <Ionicons
-              name={"checkmark" as IoniconsName}
-              size={16}
-              color="white"
-            />
-          )}
-        </ThemedView>
-
-        <ThemedText style={styles.itemEmoji}>{item.emoji}</ThemedText>
-
-        <ThemedView style={styles.itemInfo}>
-          <ThemedText
-            type="defaultSemiBold"
+          <ThemedView
             style={[
-              styles.itemName,
-              item.isCompleted && styles.completedText,
+              {
+                width: 24,
+                height: 24,
+                borderRadius: 12,
+                borderWidth: 2,
+                borderColor: item.isCompleted
+                  ? themedColors.success
+                  : themedColors.border,
+                marginRight: 12,
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: item.isCompleted
+                  ? themedColors.success
+                  : "transparent",
+              },
             ]}
           >
-            {item.name}
+            {item.isCompleted && (
+              <Ionicons name="checkmark" size={16} color="white" />
+            )}
+          </ThemedView>
+
+          <ThemedText style={{ fontSize: 24, marginRight: 12 }}>
+            {item.emoji}
           </ThemedText>
-          <ThemedText
-            type="default"
-            style={[
-              styles.itemQuantity,
-              item.isCompleted && styles.completedText,
-            ]}
+
+          <ThemedView
+            style={{ flex: 1, backgroundColor: "transparent" }}
           >
-            {item.quantity} {item.unit}
-          </ThemedText>
-          {item.notes && (
+            <ThemedText
+              type="defaultSemiBold"
+              style={[
+                { fontSize: 16, marginBottom: 2 },
+                item.isCompleted && {
+                  textDecorationLine: "line-through",
+                  opacity: 0.6,
+                },
+              ]}
+            >
+              {item.name}
+            </ThemedText>
             <ThemedText
               type="default"
               style={[
-                styles.itemNotes,
-                item.isCompleted && styles.completedText,
+                { fontSize: 14, opacity: 0.7 },
+                item.isCompleted && { opacity: 0.5 },
               ]}
             >
-              {item.notes}
+              {item.quantity} {item.unit}
             </ThemedText>
-          )}
-        </ThemedView>
-      </TouchableOpacity>
+            {item.notes && (
+              <ThemedText
+                type="default"
+                style={[
+                  {
+                    fontSize: 12,
+                    opacity: 0.6,
+                    marginTop: 2,
+                    fontStyle: "italic",
+                  },
+                  item.isCompleted && { opacity: 0.4 },
+                ]}
+              >
+                {item.notes}
+              </ThemedText>
+            )}
+          </ThemedView>
+        </TouchableOpacity>
 
-      <TouchableOpacity
-        style={styles.removeButton}
-        onPress={() => removeItem(item.id)}
-      >
-        <Ionicons
-          name={"trash-outline" as IoniconsName}
-          size={18}
-          color="#ef4444"
-        />
-      </TouchableOpacity>
-    </ThemedView>
-  );
+        <TouchableOpacity
+          style={{ padding: 8 }}
+          onPress={() => removeItem(item._id)}
+        >
+          <Ionicons
+            name="trash-outline"
+            size={18}
+            color={themedColors.error}
+          />
+        </TouchableOpacity>
+      </ThemedView>
+    );
+  };
+
+  if (loading) {
+    return <LoadingSpinner message="Loading grocery list..." />;
+  }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView
+      style={[
+        styles.container,
+        { backgroundColor: themedColors.background },
+      ]}
+    >
       <StatusBar
         barStyle={
-          colorScheme === "dark" ? "light-content" : "dark-content"
+          themedColors.text === "#1A1A21"
+            ? "dark-content"
+            : "light-content"
         }
       />
 
       {/* Header */}
-      <ThemedView style={styles.header}>
-        <ThemedView style={styles.headerLeft}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.navigate("/")}
-          >
-            <Ionicons
-              name={"chevron-back" as IoniconsName}
-              size={24}
-              color={colorScheme === "dark" ? "#fff" : "#333"}
-            />
-          </TouchableOpacity>
-          <ThemedView style={styles.headerText}>
-            <ThemedText type="title" style={styles.headerTitle}>
-              Grocery List
-            </ThemedText>
-            <ThemedText type="default" style={styles.headerSubtitle}>
-              {pendingItems.length} item
-              {pendingItems.length !== 1 ? "s" : ""} to buy
-            </ThemedText>
-          </ThemedView>
-        </ThemedView>
-        <TouchableOpacity
-          style={styles.headerAction}
-          onPress={clearCompleted}
-        >
-          <Ionicons
-            name={"trash" as IoniconsName}
-            size={20}
-            color="#ef4444"
-          />
-        </TouchableOpacity>
-      </ThemedView>
+      <Header
+        title="Grocery List"
+        subtitle={`${pendingItems.length} item${
+          pendingItems.length !== 1 ? "s" : ""
+        } to buy`}
+        onBackPress={() => router.navigate("/")}
+        rightActions={
+          <HeaderAction icon="trash" onPress={clearCompleted} />
+        }
+      />
 
       {/* Stats */}
-      <ThemedView style={styles.statsContainer}>
-        <ThemedView style={styles.statCard}>
-          <ThemedText type="default" style={styles.statNumber}>
+      <ThemedView
+        style={{
+          flexDirection: "row",
+          paddingHorizontal: 16,
+          paddingVertical: 16,
+          gap: 12,
+          backgroundColor: "transparent",
+        }}
+      >
+        <ThemedView
+          style={[
+            {
+              flex: 1,
+              alignItems: "center",
+              paddingVertical: 12,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: themedColors.border,
+              backgroundColor: themedColors.backgroundSecondary,
+            },
+          ]}
+        >
+          <ThemedText
+            style={{
+              fontSize: 18,
+              fontWeight: "bold",
+              color: themedColors.primary,
+            }}
+          >
             {pendingItems.length}
           </ThemedText>
-          <ThemedText type="default" style={styles.statLabel}>
+          <ThemedText
+            style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}
+          >
             Pending
           </ThemedText>
         </ThemedView>
-        <ThemedView style={styles.statCard}>
+
+        <ThemedView
+          style={[
+            {
+              flex: 1,
+              alignItems: "center",
+              paddingVertical: 12,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: themedColors.border,
+              backgroundColor: themedColors.backgroundSecondary,
+            },
+          ]}
+        >
           <ThemedText
-            type="default"
-            style={[styles.statNumber, { color: "#10b981" }]}
+            style={{
+              fontSize: 18,
+              fontWeight: "bold",
+              color: themedColors.success,
+            }}
           >
             {completedItems.length}
           </ThemedText>
-          <ThemedText type="default" style={styles.statLabel}>
+          <ThemedText
+            style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}
+          >
             Completed
           </ThemedText>
         </ThemedView>
-        <ThemedView style={styles.statCard}>
-          <ThemedText type="default" style={styles.statNumber}>
+
+        <ThemedView
+          style={[
+            {
+              flex: 1,
+              alignItems: "center",
+              paddingVertical: 12,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: themedColors.border,
+              backgroundColor: themedColors.backgroundSecondary,
+            },
+          ]}
+        >
+          <ThemedText
+            style={{
+              fontSize: 18,
+              fontWeight: "bold",
+              color: themedColors.primary,
+            }}
+          >
             {groceryList.length}
           </ThemedText>
-          <ThemedText type="default" style={styles.statLabel}>
+          <ThemedText
+            style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}
+          >
             Total
           </ThemedText>
         </ThemedView>
       </ThemedView>
 
       {/* Add Item Button */}
-      <ThemedView style={styles.addButtonContainer}>
-        <TouchableOpacity
-          style={styles.addButton}
+      <ThemedView
+        style={{
+          paddingHorizontal: 16,
+          paddingBottom: 16,
+          backgroundColor: "transparent",
+        }}
+      >
+        <ActionButton
+          title="Add Item"
+          icon="add"
           onPress={() => setAddItemModalVisible(true)}
-        >
-          <Ionicons
-            name={"add" as IoniconsName}
-            size={18}
-            color="white"
-          />
-          <ThemedText
-            type="defaultSemiBold"
-            style={styles.addButtonText}
-          >
-            Add Item
-          </ThemedText>
-        </TouchableOpacity>
+        />
+      </ThemedView>
+
+      {/* Search Bar */}
+      <ThemedView
+        style={{
+          paddingHorizontal: 16,
+          paddingBottom: 16,
+          backgroundColor: "transparent",
+        }}
+      >
+        <SearchBar
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholder="Search items..."
+        />
       </ThemedView>
 
       <ScrollView
-        style={styles.content}
+        style={[styles.container]}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[themedColors.primary]}
+          />
+        }
       >
         {/* Quick Add */}
-        <ThemedView style={styles.quickAddSection}>
-          <ThemedText type="subtitle" style={styles.sectionTitle}>
+        <ThemedView
+          style={{
+            paddingHorizontal: 16,
+            paddingBottom: 24,
+            backgroundColor: "transparent",
+          }}
+        >
+          <ThemedText
+            type="subtitle"
+            style={{ fontSize: 18, marginBottom: 16 }}
+          >
             Quick Add
           </ThemedText>
-          <ThemedView style={styles.quickAddGrid}>
+          <ThemedView
+            style={{
+              flexDirection: "row",
+              flexWrap: "wrap",
+              justifyContent: "space-between",
+              backgroundColor: "transparent",
+            }}
+          >
             {quickAddItems.map((item, index) => (
               <TouchableOpacity
                 key={index}
-                style={styles.quickAddItem}
+                style={{
+                  width: "23%",
+                  alignItems: "center",
+                  paddingVertical: 12,
+                  marginBottom: 12,
+                  borderRadius: 8,
+                  borderWidth: 1,
+                  borderColor: themedColors.border,
+                  backgroundColor: themedColors.backgroundTertiary,
+                }}
                 onPress={() => quickAddItem(item)}
               >
-                <ThemedText style={styles.quickAddEmoji}>
+                <ThemedText style={{ fontSize: 24, marginBottom: 4 }}>
                   {item.emoji}
                 </ThemedText>
-                <ThemedText type="default" style={styles.quickAddName}>
+                <ThemedText
+                  style={{ fontSize: 10, textAlign: "center" }}
+                >
                   {item.name}
                 </ThemedText>
               </TouchableOpacity>
@@ -483,11 +688,25 @@ export default function GroceryListPage() {
         </ThemedView>
 
         {/* Grocery Items */}
-        <ThemedView style={styles.itemsSection}>
+        <ThemedView
+          style={{
+            paddingHorizontal: 16,
+            paddingBottom: 100,
+            backgroundColor: "transparent",
+          }}
+        >
           {/* Pending Items */}
           {pendingItems.length > 0 && (
-            <ThemedView style={styles.itemsGroup}>
-              <ThemedText type="subtitle" style={styles.groupTitle}>
+            <ThemedView
+              style={{
+                marginBottom: 24,
+                backgroundColor: "transparent",
+              }}
+            >
+              <ThemedText
+                type="subtitle"
+                style={{ fontSize: 16, marginBottom: 12 }}
+              >
                 To Buy ({pendingItems.length})
               </ThemedText>
               {pendingItems.map(renderGroceryItem)}
@@ -496,10 +715,15 @@ export default function GroceryListPage() {
 
           {/* Completed Items */}
           {showCompleted && completedItems.length > 0 && (
-            <ThemedView style={styles.itemsGroup}>
+            <ThemedView
+              style={{
+                marginBottom: 24,
+                backgroundColor: "transparent",
+              }}
+            >
               <ThemedText
                 type="subtitle"
-                style={[styles.groupTitle, styles.completedGroupTitle]}
+                style={{ fontSize: 16, marginBottom: 12, opacity: 0.7 }}
               >
                 Completed ({completedItems.length})
               </ThemedText>
@@ -509,590 +733,91 @@ export default function GroceryListPage() {
 
           {/* Empty State */}
           {filteredItems.length === 0 && (
-            <ThemedView style={styles.emptyState}>
-              <Ionicons
-                name={"cart-outline" as IoniconsName}
-                size={64}
-                color={colorScheme === "dark" ? "#666" : "#ccc"}
-              />
-              <ThemedText type="subtitle" style={styles.emptyTitle}>
-                {searchQuery ? "No items found" : "Your list is empty"}
-              </ThemedText>
-              <ThemedText type="default" style={styles.emptySubtitle}>
-                {searchQuery
+            <EmptyState
+              icon="cart-outline"
+              title={
+                searchQuery ? "No items found" : "Your list is empty"
+              }
+              subtitle={
+                searchQuery
                   ? "Try a different search term"
-                  : "Add items to get started"}
-              </ThemedText>
-            </ThemedView>
+                  : "Add items to get started"
+              }
+            />
           )}
         </ThemedView>
       </ScrollView>
 
       {/* Add Item Modal */}
       <Modal
-        animationType="slide"
-        transparent={true}
         visible={addItemModalVisible}
-        onRequestClose={() => setAddItemModalVisible(false)}
+        onClose={() => setAddItemModalVisible(false)}
+        title="Add Item"
       >
-        <ThemedView style={styles.modalOverlay}>
-          <ThemedView style={styles.modalContent}>
-            <ThemedView style={styles.modalHeader}>
-              <ThemedText type="subtitle" style={styles.modalTitle}>
-                Add Item
-              </ThemedText>
-              <TouchableOpacity
-                onPress={() => setAddItemModalVisible(false)}
-              >
-                <Ionicons
-                  name={"close" as IoniconsName}
-                  size={24}
-                  color={colorScheme === "dark" ? "#fff" : "#333"}
-                />
-              </TouchableOpacity>
-            </ThemedView>
+        <ScrollView showsVerticalScrollIndicator={false}>
+          {/* Item Name */}
+          <FormInput
+            label="Item Name"
+            placeholder="e.g., Organic Milk"
+            value={newItem.name}
+            onChangeText={(text) =>
+              setNewItem({ ...newItem, name: text })
+            }
+          />
 
-            <ScrollView
-              style={styles.modalBody}
-              showsVerticalScrollIndicator={false}
-            >
-              {/* Item Name */}
-              <ThemedView style={styles.formGroup}>
-                <ThemedText
-                  type="defaultSemiBold"
-                  style={styles.formLabel}
-                >
-                  Item Name
-                </ThemedText>
-                <TextInput
-                  style={[
-                    styles.formInput,
-                    {
-                      borderColor:
-                        colorScheme === "dark" ? "#444" : "#e5e7eb",
-                      backgroundColor:
-                        colorScheme === "dark" ? "#333" : "#fff",
-                      color: colorScheme === "dark" ? "#fff" : "#333",
-                    },
-                  ]}
-                  placeholder="e.g., Organic Milk"
-                  placeholderTextColor={
-                    colorScheme === "dark" ? "#888" : "#999"
-                  }
-                  value={newItem.name}
-                  onChangeText={(text) =>
-                    setNewItem({ ...newItem, name: text })
-                  }
-                />
-              </ThemedView>
+          {/* Quantity and Unit */}
+          <View style={{ flexDirection: "row", gap: 12 }}>
+            <FormInput
+              label="Quantity"
+              placeholder="1"
+              value={newItem.quantity.toString()}
+              onChangeText={(text) =>
+                setNewItem({
+                  ...newItem,
+                  quantity: parseInt(text) || 1,
+                })
+              }
+              keyboardType="numeric"
+              containerStyle={{ flex: 1 }}
+            />
+            <FormInput
+              label="Unit"
+              value={newItem.unit}
+              containerStyle={{ flex: 1 }}
+            />
+          </View>
 
-              {/* Quantity and Unit */}
-              <ThemedView style={styles.formRow}>
-                <ThemedView
-                  style={[
-                    styles.formGroup,
-                    { flex: 1, marginRight: 8 },
-                  ]}
-                >
-                  <ThemedText
-                    type="defaultSemiBold"
-                    style={styles.formLabel}
-                  >
-                    Quantity
-                  </ThemedText>
-                  <TextInput
-                    style={[
-                      styles.formInput,
-                      {
-                        borderColor:
-                          colorScheme === "dark" ? "#444" : "#e5e7eb",
-                        backgroundColor:
-                          colorScheme === "dark" ? "#333" : "#fff",
-                        color: colorScheme === "dark" ? "#fff" : "#333",
-                      },
-                    ]}
-                    placeholder="1"
-                    placeholderTextColor={
-                      colorScheme === "dark" ? "#888" : "#999"
-                    }
-                    value={newItem.quantity.toString()}
-                    onChangeText={(text) =>
-                      setNewItem({
-                        ...newItem,
-                        quantity: parseInt(text) || 1,
-                      })
-                    }
-                    keyboardType="numeric"
-                  />
-                </ThemedView>
-                <ThemedView
-                  style={[styles.formGroup, { flex: 1, marginLeft: 8 }]}
-                >
-                  <ThemedText
-                    type="defaultSemiBold"
-                    style={styles.formLabel}
-                  >
-                    Unit
-                  </ThemedText>
-                  <TouchableOpacity
-                    style={[styles.formInput, styles.pickerButton]}
-                  >
-                    <ThemedText
-                      type="default"
-                      style={styles.pickerText}
-                    >
-                      {newItem.unit}
-                    </ThemedText>
-                    <Ionicons
-                      name={"chevron-down" as IoniconsName}
-                      size={16}
-                      color={colorScheme === "dark" ? "#fff" : "#666"}
-                    />
-                  </TouchableOpacity>
-                </ThemedView>
-              </ThemedView>
+          {/* Category */}
+          <FormInput
+            label="Category"
+            value={
+              categories.find((cat) => cat.id === newItem.category)
+                ?.name || "Other"
+            }
+            containerStyle={{ marginBottom: 16 }}
+          />
 
-              {/* Category */}
-              <ThemedView style={styles.formGroup}>
-                <ThemedText
-                  type="defaultSemiBold"
-                  style={styles.formLabel}
-                >
-                  Category
-                </ThemedText>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  style={styles.categoryPicker}
-                >
-                  {categories.map((category) => (
-                    <TouchableOpacity
-                      key={category.id}
-                      style={[
-                        styles.categoryOption,
-                        newItem.category === category.id && {
-                          backgroundColor: category.color,
-                          borderColor: category.color,
-                        },
-                      ]}
-                      onPress={() =>
-                        setNewItem({
-                          ...newItem,
-                          category: category.id,
-                        })
-                      }
-                    >
-                      <ThemedText style={styles.categoryEmoji}>
-                        {category.emoji}
-                      </ThemedText>
-                      <ThemedText
-                        type="default"
-                        style={[
-                          styles.categoryOptionText,
-                          newItem.category === category.id && {
-                            color: "white",
-                          },
-                        ]}
-                      >
-                        {category.name}
-                      </ThemedText>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </ThemedView>
+          {/* Notes */}
+          <FormInput
+            label="Notes (Optional)"
+            placeholder="e.g., Brand preference, size, etc."
+            value={newItem.notes}
+            onChangeText={(text) =>
+              setNewItem({ ...newItem, notes: text })
+            }
+            multiline
+            style={{ minHeight: 80, textAlignVertical: "top" }}
+          />
 
-              {/* Notes */}
-              <ThemedView style={styles.formGroup}>
-                <ThemedText
-                  type="defaultSemiBold"
-                  style={styles.formLabel}
-                >
-                  Notes (Optional)
-                </ThemedText>
-                <TextInput
-                  style={[
-                    styles.formInput,
-                    styles.notesInput,
-                    {
-                      borderColor:
-                        colorScheme === "dark" ? "#444" : "#e5e7eb",
-                      backgroundColor:
-                        colorScheme === "dark" ? "#333" : "#fff",
-                      color: colorScheme === "dark" ? "#fff" : "#333",
-                    },
-                  ]}
-                  placeholder="e.g., Brand preference, size, etc."
-                  placeholderTextColor={
-                    colorScheme === "dark" ? "#888" : "#999"
-                  }
-                  value={newItem.notes}
-                  onChangeText={(text) =>
-                    setNewItem({ ...newItem, notes: text })
-                  }
-                  multiline
-                  textAlignVertical="top"
-                />
-              </ThemedView>
-
-              {/* Add Button */}
-              <TouchableOpacity
-                style={[
-                  styles.modalButton,
-                  { backgroundColor: THEME_COLOR },
-                ]}
-                onPress={addNewItem}
-                disabled={!newItem.name.trim()}
-              >
-                <Ionicons
-                  name={"add" as IoniconsName}
-                  size={18}
-                  color="white"
-                  style={{ marginRight: 8 }}
-                />
-                <ThemedText
-                  type="defaultSemiBold"
-                  style={styles.modalButtonText}
-                >
-                  Add to List
-                </ThemedText>
-              </TouchableOpacity>
-            </ScrollView>
-          </ThemedView>
-        </ThemedView>
+          <ActionButton
+            title="Add to List"
+            icon="add"
+            onPress={addNewItem}
+            disabled={!newItem.name.trim()}
+            style={{ marginTop: 20 }}
+          />
+        </ScrollView>
       </Modal>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(128, 128, 128, 0.2)",
-  },
-  headerLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "transparent",
-    flex: 1,
-  },
-  backButton: {
-    marginRight: 12,
-  },
-  headerText: {
-    backgroundColor: "transparent",
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    opacity: 0.7,
-  },
-  headerAction: {
-    padding: 8,
-  },
-  statsContainer: {
-    flexDirection: "row",
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    gap: 12,
-    backgroundColor: "transparent",
-  },
-  statCard: {
-    flex: 1,
-    alignItems: "center",
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "rgba(128, 128, 128, 0.2)",
-  },
-  statNumber: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: THEME_COLOR,
-  },
-  statLabel: {
-    fontSize: 12,
-    opacity: 0.7,
-    marginTop: 4,
-  },
-  addButtonContainer: {
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    backgroundColor: "transparent",
-  },
-  addButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: THEME_COLOR,
-    paddingVertical: 12,
-    borderRadius: 12,
-  },
-  addButtonText: {
-    color: "white",
-    fontSize: 16,
-    marginLeft: 8,
-  },
-  searchContainer: {
-    flexDirection: "row",
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    gap: 12,
-    backgroundColor: "transparent",
-  },
-  searchBar: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "rgba(128, 128, 128, 0.2)",
-    backgroundColor: "rgba(128, 128, 128, 0.05)",
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    marginLeft: 12,
-  },
-  filterButton: {
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: THEME_COLOR,
-    backgroundColor: "transparent",
-  },
-  activeFilter: {
-    backgroundColor: THEME_COLOR,
-  },
-  content: {
-    flex: 1,
-  },
-  quickAddSection: {
-    paddingHorizontal: 16,
-    paddingBottom: 24,
-    backgroundColor: "transparent",
-  },
-  sectionTitle: {
-    fontSize: 18,
-    marginBottom: 16,
-  },
-  quickAddGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    backgroundColor: "transparent",
-  },
-  quickAddItem: {
-    width: "23%",
-    alignItems: "center",
-    paddingVertical: 12,
-    marginBottom: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "rgba(128, 128, 128, 0.2)",
-    backgroundColor: "rgba(128, 128, 128, 0.05)",
-  },
-  quickAddEmoji: {
-    fontSize: 24,
-    marginBottom: 4,
-  },
-  quickAddName: {
-    fontSize: 10,
-    textAlign: "center",
-  },
-  itemsSection: {
-    paddingHorizontal: 16,
-    paddingBottom: 100,
-    backgroundColor: "transparent",
-  },
-  itemsGroup: {
-    marginBottom: 24,
-    backgroundColor: "transparent",
-  },
-  groupTitle: {
-    fontSize: 16,
-    marginBottom: 12,
-  },
-  completedGroupTitle: {
-    opacity: 0.7,
-  },
-  groceryItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    marginBottom: 8,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "rgba(128, 128, 128, 0.2)",
-  },
-  completedItem: {
-    opacity: 0.6,
-    backgroundColor: "rgba(128, 128, 128, 0.1)",
-  },
-  itemLeft: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: "rgba(128, 128, 128, 0.3)",
-    marginRight: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  checkedCheckbox: {
-    backgroundColor: "#10b981",
-    borderColor: "#10b981",
-  },
-  itemEmoji: {
-    fontSize: 24,
-    marginRight: 12,
-  },
-  itemInfo: {
-    flex: 1,
-    backgroundColor: "transparent",
-  },
-  itemName: {
-    fontSize: 16,
-    marginBottom: 2,
-  },
-  itemQuantity: {
-    fontSize: 14,
-    opacity: 0.7,
-  },
-  itemNotes: {
-    fontSize: 12,
-    opacity: 0.6,
-    marginTop: 2,
-    fontStyle: "italic",
-  },
-  completedText: {
-    textDecorationLine: "line-through",
-    opacity: 0.6,
-  },
-  removeButton: {
-    padding: 8,
-  },
-  emptyState: {
-    alignItems: "center",
-    paddingVertical: 60,
-    backgroundColor: "transparent",
-  },
-  emptyTitle: {
-    fontSize: 18,
-    marginTop: 16,
-    marginBottom: 8,
-    opacity: 0.7,
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    opacity: 0.5,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "flex-end",
-  },
-  modalContent: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: "80%",
-    backgroundColor: "#ffffff",
-  },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(128, 128, 128, 0.2)",
-    backgroundColor: "transparent",
-  },
-  modalTitle: {
-    fontSize: 18,
-  },
-  modalBody: {
-    padding: 20,
-  },
-  formGroup: {
-    marginBottom: 16,
-    backgroundColor: "transparent",
-  },
-  formRow: {
-    flexDirection: "row",
-    backgroundColor: "transparent",
-  },
-  formLabel: {
-    fontSize: 14,
-    marginBottom: 8,
-  },
-  formInput: {
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    minHeight: 44,
-  },
-  pickerButton: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  pickerText: {
-    fontSize: 16,
-  },
-  categoryPicker: {
-    marginTop: 8,
-  },
-  categoryOption: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginRight: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "rgba(128, 128, 128, 0.2)",
-  },
-  categoryEmoji: {
-    fontSize: 16,
-    marginRight: 6,
-  },
-  categoryOptionText: {
-    fontSize: 12,
-  },
-  notesInput: {
-    height: 80,
-    textAlignVertical: "top",
-  },
-  modalButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 12,
-    borderRadius: 8,
-    marginTop: 20,
-  },
-  modalButtonText: {
-    fontSize: 16,
-    color: "white",
-    fontWeight: "600",
-  },
-});

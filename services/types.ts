@@ -505,3 +505,106 @@ export interface PermissionError extends MealPlanError {
   action: string;
   resource: string;
 }
+
+// ============ GROCERY ITEM TYPES ============
+
+export interface GroceryItem {
+  _id: string;
+  userId: string;
+  name: string;
+  quantity: number;
+  unit: string;
+  category: string;
+  emoji: string;
+  isCompleted: boolean;
+  addedDate: Date | string;
+  completedDate?: Date | string | null;
+  updatedDate?: Date | string;
+  notes?: string;
+  priority?: "low" | "medium" | "high";
+  estimatedPrice?: number;
+  store?: string;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+}
+
+export interface CreateGroceryItemData {
+  name: string;
+  quantity: number;
+  unit: string;
+  category: string;
+  emoji: string;
+  notes?: string;
+  priority?: "low" | "medium" | "high";
+  estimatedPrice?: number;
+  store?: string;
+}
+
+export interface GroceryStats {
+  total: number;
+  pending: number;
+  completed: number;
+  completionRate: number;
+  categoryBreakdown: Array<{
+    category: string;
+    count: number;
+  }>;
+}
+
+export interface QuickAddItem {
+  name: string;
+  emoji: string;
+  category: string;
+  unit: string;
+}
+
+export interface GroceryCategory {
+  id: string;
+  name: string;
+  emoji: string;
+  color: string;
+}
+
+// Constants for validation
+export const GROCERY_UNITS = [
+  "piece",
+  "lb",
+  "kg",
+  "oz",
+  "g",
+  "cup",
+  "tbsp",
+  "tsp",
+  "bottle",
+  "package",
+  "box",
+  "bag",
+  "bunch",
+  "dozen",
+  "gallon",
+  "loaf",
+  "jar",
+  "can",
+  "pint",
+  "quart",
+  "liter",
+] as const;
+
+export const GROCERY_CATEGORIES = [
+  "fresh",
+  "dairy",
+  "meat",
+  "pantry",
+  "bakery",
+  "frozen",
+  "snacks",
+  "beverages",
+  "household",
+  "other",
+] as const;
+
+export const GROCERY_PRIORITIES = ["low", "medium", "high"] as const;
+
+export type GroceryUnit = (typeof GROCERY_UNITS)[number];
+export type GroceryCategoryId = (typeof GROCERY_CATEGORIES)[number];
+export type GroceryPriority = (typeof GROCERY_PRIORITIES)[number];

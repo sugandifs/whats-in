@@ -308,38 +308,6 @@ export default function PantryPage() {
     }
   };
 
-  // const handleBarcodeScan = async (barcode: string) => {
-  //   try {
-  //     setLoading(true);
-  //     const result = await ApiService.scanBarcode(barcode);
-
-  //     if (result.success) {
-  //       // Pre-fill the form with scanned data
-  //       setNewItem({
-  //         name: result.item.name || "",
-  //         category: result.item.category || "pantry",
-  //         quantity: result.item.quantity || 1,
-  //         unit: result.item.unit || "piece",
-  //         expirationDate: result.item.expirationDate
-  //           ? new Date(result.item.expirationDate)
-  //           : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-  //         location: result.item.location || "pantry",
-  //         emoji: result.item.emoji || "📦",
-  //         notes: result.item.notes || "",
-  //       });
-
-  //       setScanModalVisible(false);
-  //       setAddItemModalVisible(true);
-  //       Alert.alert("Barcode Scanned", result.message);
-  //     }
-  //   } catch (error) {
-  //     console.error("Barcode scan failed:", error);
-  //     Alert.alert("Error", "Failed to scan barcode. Please try again.");
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
-
   const renderItemCard = ({ item }: { item: PantryItem }) => {
     const expiration = getExpirationStatus(item.expirationDate);
     const location = locations.find((loc) => loc.id === item.location);
@@ -512,30 +480,6 @@ export default function PantryPage() {
               Track your ingredients
             </ThemedText>
           </ThemedView>
-        </ThemedView>
-        <ThemedView style={styles.headerActions}>
-          <TouchableOpacity
-            style={styles.headerAction}
-            onPress={() => setScanModalVisible(true)}
-          >
-            <Ionicons
-              name={"scan" as IoniconsName}
-              size={20}
-              color={THEME_COLOR}
-            />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.headerAction}
-            onPress={() =>
-              setActiveView(activeView === "grid" ? "list" : "grid")
-            }
-          >
-            <Ionicons
-              name={activeView === "grid" ? "list" : "grid"}
-              size={20}
-              color={colorScheme === "dark" ? "#fff" : "#666"}
-            />
-          </TouchableOpacity>
         </ThemedView>
       </ThemedView>
 
