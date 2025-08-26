@@ -57,6 +57,7 @@ export default function MealPrepHome() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [addItemModalVisible, setAddItemModalVisible] = useState(false);
+  const [weekMealPlans, setWeekMealPlans] = useState<any[]>([]);
 
   // Data states
   const [recentRecipes, setRecentRecipes] = useState<Recipe[]>([]);
@@ -128,14 +129,20 @@ export default function MealPrepHome() {
       setLoading(true);
 
       if (currentUser) {
-        // Load recipes (recent ones)
-        const recipes = await ApiService.getRecipes();
+        // Get current week range
+        const { startDate, endDate } = ApiService.getCurrentWeekRange();
+
+        // Load all data in parallel
+        const [recipes, pantryItemsFromApi, mealPlans] =
+          await Promise.all([
+            ApiService.getRecipes(),
+            ApiService.getPantryItems(),
+            ApiService.getMealPlans(startDate, endDate),
+          ]);
+
         setRecentRecipes(recipes.slice(0, 3));
 
-        // Load pantry items and convert date strings to Date objects
-        const pantryItemsFromApi = await ApiService.getPantryItems();
-
-        // Convert date strings to Date objects
+        // Convert date strings to Date objects for pantry items
         const pantryItems: PantryItem[] = pantryItemsFromApi.map(
           (item) => ({
             ...item,
@@ -143,8 +150,8 @@ export default function MealPrepHome() {
             purchaseDate: new Date(item.purchaseDate),
           })
         );
-
         setPantryItems(pantryItems);
+        setWeekMealPlans(mealPlans);
       }
     } catch (error) {
       console.error("Failed to load data:", error);
@@ -295,8 +302,8 @@ export default function MealPrepHome() {
         rightActions={
           <>
             <HeaderAction
-              icon="settings"
-              onPress={() => router.push("/recipes")}
+              icon="menu"
+              onPress={() => router.push("/settings")}
             />
           </>
         }
@@ -626,30 +633,58 @@ export default function MealPrepHome() {
                 This Week's Plan
               </ThemedText>
 
-              {["Mon", "Tue", "Wed"].map((day) => (
-                <ThemedView
-                  key={day}
-                  style={[
-                    styles.rowBetween,
-                    {
-                      marginBottom: theme.spacing.sm,
-                      backgroundColor: "transparent",
-                    },
-                  ]}
+              {weekMealPlans.length > 0 ? (
+                weekMealPlans.slice(0, 3).map((plan) => {
+                  const mealCount = Object.keys(
+                    plan.meals || {}
+                  ).length;
+                  const dayName = new Date(
+                    plan.date.split("T")[0]
+                  ).toLocaleDateString("en-US", { weekday: "short" });
+
+                  return (
+                    <ThemedView
+                      key={plan._id}
+                      style={[
+                        styles.rowBetween,
+                        {
+                          marginBottom: theme.spacing.sm,
+                          backgroundColor: "transparent",
+                        },
+                      ]}
+                    >
+                      <ThemedText style={{ fontSize: 14 }}>
+                        {dayName}
+                      </ThemedText>
+                      <ThemedText
+                        style={{
+                          fontSize: 14,
+                          opacity: 0.7,
+                          color:
+                            mealCount > 0
+                              ? themedColors.success
+                              : themedColors.textSecondary,
+                        }}
+                      >
+                        {mealCount > 0
+                          ? `${mealCount} meals`
+                          : "Not planned"}
+                      </ThemedText>
+                    </ThemedView>
+                  );
+                })
+              ) : (
+                <ThemedText
+                  style={{
+                    fontSize: 14,
+                    opacity: 0.7,
+                    textAlign: "center",
+                    marginVertical: theme.spacing.md,
+                  }}
                 >
-                  <ThemedText style={{ fontSize: 14 }}>
-                    {day}
-                  </ThemedText>
-                  <ThemedText
-                    style={{
-                      fontSize: 14,
-                      opacity: 0.7,
-                    }}
-                  >
-                    Not planned
-                  </ThemedText>
-                </ThemedView>
-              ))}
+                  No meal plans this week
+                </ThemedText>
+              )}
 
               <TouchableOpacity
                 style={{
@@ -658,7 +693,11 @@ export default function MealPrepHome() {
                 }}
                 onPress={() => router.push("/planner")}
               >
-                <ThemedText type="link">Plan Week</ThemedText>
+                <ThemedText type="link">
+                  {weekMealPlans.length > 0
+                    ? "View Full Week"
+                    : "Plan Week"}
+                </ThemedText>
               </TouchableOpacity>
             </ThemedView>
           </ThemedView>

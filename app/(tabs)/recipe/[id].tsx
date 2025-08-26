@@ -250,7 +250,7 @@ export default function RecipeDetailPage() {
       <ThemedView style={recipeDetailsStyles.header}>
         <TouchableOpacity
           style={recipeDetailsStyles.headerButton}
-          onPress={() => router.back()}
+          onPress={() => router.push("/recipes")}
         >
           <Ionicons
             name="chevron-back"

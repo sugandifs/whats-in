@@ -3,7 +3,6 @@ import { PantryItem } from "@/services/types";
 import { componentStyles } from "@/styles/componentStyles";
 import { baseTheme } from "@/styles/theme";
 import { CONSTANTS } from "@/utils/constants";
-import { getExpirationStatus } from "@/utils/styleHelpers";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { TouchableOpacity } from "react-native";
@@ -24,7 +23,6 @@ export const PantryItemCard: React.FC<PantryItemCardProps> = ({
   viewMode = "grid",
 }) => {
   const { themedColors } = useThemedStyles();
-  const expiration = getExpirationStatus(item.expirationDate);
   const location = CONSTANTS.LOCATIONS.find(
     (loc) => loc.id === item.location
   );
@@ -48,16 +46,6 @@ export const PantryItemCard: React.FC<PantryItemCardProps> = ({
         <ThemedText style={componentStyles.itemEmoji}>
           {item.emoji}
         </ThemedText>
-        <ThemedView
-          style={[
-            componentStyles.expirationBadge,
-            { backgroundColor: expiration.color },
-          ]}
-        >
-          <ThemedText style={componentStyles.expirationText}>
-            {expiration.text}
-          </ThemedText>
-        </ThemedView>
       </ThemedView>
 
       <ThemedView style={{ flex: 1, backgroundColor: "transparent" }}>
@@ -153,30 +141,6 @@ export const PantryItemCard: React.FC<PantryItemCardProps> = ({
               }}
             >
               {location?.name}
-            </ThemedText>
-          </ThemedView>
-
-          <ThemedView
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              backgroundColor: "transparent",
-            }}
-          >
-            <Ionicons
-              name="calendar"
-              size={12}
-              color={themedColors.textSecondary}
-            />
-            <ThemedText
-              type="default"
-              style={{
-                fontSize: 12,
-                marginLeft: 6,
-                opacity: 0.7,
-              }}
-            >
-              {new Date(item.expirationDate).toLocaleDateString()}
             </ThemedText>
           </ThemedView>
         </ThemedView>

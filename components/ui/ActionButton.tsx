@@ -1,4 +1,5 @@
 import { useThemedStyles } from "@/hooks/useThemedStyles";
+import { darkenColor } from "@/styles";
 import { styles } from "@/styles/styles";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
@@ -28,7 +29,7 @@ export const ActionButton: React.FC<ActionButtonProps> = ({
   disabled = false,
   style,
 }) => {
-  const { themedColors } = useThemedStyles();
+  const { themedColors, colorScheme } = useThemedStyles();
 
   const getButtonStyle = (): ViewStyle[] => {
     const baseStyles: ViewStyle[] = [styles.button];
@@ -60,6 +61,11 @@ export const ActionButton: React.FC<ActionButtonProps> = ({
     return baseStyles;
   };
 
+  // Get a darker version of the primary color for better accessibility
+  const getDarkerPrimaryColor = () => {
+    return darkenColor(themedColors.primary, 40); // Darken by 40%
+  };
+
   const getTextStyle = () => {
     switch (variant) {
       case "primary":
@@ -69,7 +75,11 @@ export const ActionButton: React.FC<ActionButtonProps> = ({
       case "outline":
         return {
           ...styles.buttonText,
-          color: themedColors.primary,
+          // Use darker primary color in light mode for accessibility, primary color in dark mode
+          color:
+            colorScheme === "light"
+              ? getDarkerPrimaryColor()
+              : themedColors.primary,
         };
       default:
         return styles.buttonText;
@@ -83,7 +93,10 @@ export const ActionButton: React.FC<ActionButtonProps> = ({
       case "secondary":
         return themedColors.text;
       case "outline":
-        return themedColors.primary;
+        // Use darker primary color in light mode for accessibility, primary color in dark mode
+        return colorScheme === "light"
+          ? getDarkerPrimaryColor()
+          : themedColors.primary;
       default:
         return "white";
     }

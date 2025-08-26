@@ -45,3 +45,28 @@ export const createShadow = (elevation: number) => ({
   shadowRadius: elevation,
   elevation,
 });
+
+// Helper function to darken a hex color by a percentage
+export const darkenColor = (
+  hexColor: string,
+  percent: number
+): string => {
+  // Remove the hash if present
+  const hex = hexColor.replace("#", "");
+
+  // Parse RGB values
+  const r = parseInt(hex.substr(0, 2), 16);
+  const g = parseInt(hex.substr(2, 2), 16);
+  const b = parseInt(hex.substr(4, 2), 16);
+
+  // Darken each component
+  const darkenedR = Math.floor(r * (1 - percent / 100));
+  const darkenedG = Math.floor(g * (1 - percent / 100));
+  const darkenedB = Math.floor(b * (1 - percent / 100));
+
+  // Convert back to hex
+  const toHex = (component: number) =>
+    component.toString(16).padStart(2, "0");
+
+  return `#${toHex(darkenedR)}${toHex(darkenedG)}${toHex(darkenedB)}`;
+};

@@ -1,53 +1,417 @@
 import { StyleSheet } from "react-native";
 import { baseTheme } from "./theme";
 
+const THEME_COLOR = "#FFB902";
+
 export const pantryPageStyles = StyleSheet.create({
-  addButtonContainer: {
-    paddingHorizontal: baseTheme.spacing.lg,
-    paddingBottom: baseTheme.spacing.lg,
+  container: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(128, 128, 128, 0.2)",
+  },
+  headerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "transparent",
+    flex: 1,
+  },
+  backButton: {
+    marginRight: 12,
+  },
+  headerText: {
     backgroundColor: "transparent",
   },
-
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    opacity: 0.7,
+  },
+  headerActions: {
+    flexDirection: "row",
+    backgroundColor: "transparent",
+  },
+  headerAction: {
+    padding: 8,
+    marginLeft: 8,
+  },
+  statsContainer: {
+    flexDirection: "row",
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    gap: 12,
+    backgroundColor: "transparent",
+  },
+  statCard: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(128, 128, 128, 0.2)",
+  },
+  urgentStat: {
+    backgroundColor: "rgba(239, 68, 68, 0.1)",
+    borderColor: "#ef4444",
+  },
+  statNumber: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: THEME_COLOR,
+  },
+  statLabel: {
+    fontSize: 12,
+    opacity: 0.7,
+    marginTop: 4,
+  },
+  addButtonContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    backgroundColor: "transparent",
+  },
+  addButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: THEME_COLOR,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  addButtonText: {
+    color: "white",
+    fontSize: 16,
+    marginLeft: 8,
+  },
   controlsContainer: {
     flexDirection: "row",
-    paddingHorizontal: baseTheme.spacing.lg,
-    paddingBottom: baseTheme.spacing.lg,
-    gap: baseTheme.spacing.md,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    gap: 12,
     backgroundColor: "transparent",
   },
-
-  sortButton: {
-    padding: baseTheme.spacing.md,
-    borderRadius: baseTheme.borderRadius.md,
+  searchBar: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
     borderWidth: 1,
+    borderColor: "rgba(128, 128, 128, 0.2)",
+    backgroundColor: "rgba(128, 128, 128, 0.05)",
   },
-
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    marginLeft: 12,
+  },
+  sortButton: {
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: THEME_COLOR,
+    backgroundColor: `${THEME_COLOR}20`,
+  },
+  content: {
+    flex: 1,
+  },
   categoriesSection: {
-    paddingVertical: baseTheme.spacing.lg,
+    paddingVertical: 16,
     backgroundColor: "transparent",
   },
-
+  categoriesList: {
+    paddingLeft: 16,
+  },
+  categoryCard: {
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginRight: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(128, 128, 128, 0.2)",
+    backgroundColor: "rgba(128, 128, 128, 0.05)",
+    minWidth: 80,
+  },
+  categoryIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 8,
+  },
+  categoryName: {
+    fontSize: 12,
+    textAlign: "center",
+    marginBottom: 4,
+  },
+  categoryCount: {
+    fontSize: 10,
+    opacity: 0.7,
+  },
   itemsSection: {
-    paddingHorizontal: baseTheme.spacing.lg,
+    paddingHorizontal: 16,
     paddingBottom: 100,
     backgroundColor: "transparent",
   },
-
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+    backgroundColor: "transparent",
+  },
+  sectionTitle: {
+    fontSize: 18,
+  },
+  itemCount: {
+    fontSize: 14,
+    opacity: 0.7,
+  },
   itemsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
     backgroundColor: "transparent",
   },
-
+  itemsList: {
+    flexDirection: "column",
+  },
   itemContainer: {
     width: "48%",
-    marginBottom: baseTheme.spacing.lg,
+    marginBottom: 16,
     backgroundColor: "transparent",
   },
-
   itemContainerList: {
     width: "100%",
+  },
+  itemCard: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(128, 128, 128, 0.2)",
+    padding: 12,
+  },
+  itemCardList: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  itemHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+    backgroundColor: "transparent",
+  },
+  itemEmoji: {
+    fontSize: 32,
+  },
+  expirationBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  expirationText: {
+    fontSize: 12,
+    color: "white",
+    fontWeight: "600",
+  },
+  itemInfo: {
+    backgroundColor: "transparent",
+  },
+  itemName: {
+    fontSize: 14,
+    marginBottom: 2,
+  },
+  itemQuantity: {
+    fontSize: 12,
+    opacity: 0.7,
+    marginBottom: 8,
+  },
+  itemDetails: {
+    backgroundColor: "transparent",
+  },
+  itemDetail: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 4,
+    backgroundColor: "transparent",
+  },
+  itemDetailText: {
+    fontSize: 12,
+    marginLeft: 6,
+    opacity: 0.7,
+  },
+  itemNotes: {
+    fontSize: 12,
+    opacity: 0.6,
+    marginTop: 4,
+    fontStyle: "italic",
+  },
+  quantityContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+    backgroundColor: "transparent",
+  },
+  quantityButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: `${THEME_COLOR}20`,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emptyState: {
+    alignItems: "center",
+    paddingVertical: 40,
+    backgroundColor: "rgba(128, 128, 128, 0.05)",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(128, 128, 128, 0.2)",
+  },
+  emptyText: {
+    marginTop: 12,
+    marginBottom: 8,
+    opacity: 0.7,
+    textAlign: "center",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: "85%",
+    backgroundColor: "#ffffff", // For light mode
+  },
+  scanModalContent: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    height: "60%",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(128, 128, 128, 0.2)",
+    backgroundColor: "transparent",
+  },
+  modalTitle: {
+    fontSize: 18,
+  },
+  modalBody: {
+    padding: 20,
+  },
+  formGroup: {
+    marginBottom: 16,
+    backgroundColor: "transparent",
+  },
+  formRow: {
+    flexDirection: "row",
+    backgroundColor: "transparent",
+  },
+  formLabel: {
+    fontSize: 14,
+    marginBottom: 8,
+  },
+  formInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    minHeight: 44,
+  },
+  pickerButton: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  pickerText: {
+    fontSize: 16,
+  },
+  categoryPicker: {
+    marginTop: 8,
+  },
+  categoryOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginRight: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "rgba(128, 128, 128, 0.2)",
+  },
+  categoryOptionText: {
+    fontSize: 12,
+    marginLeft: 6,
+  },
+  locationPicker: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    backgroundColor: "transparent",
+  },
+  locationOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "rgba(128, 128, 128, 0.2)",
+    flex: 1,
+    minWidth: "45%",
+  },
+  locationOptionText: {
+    fontSize: 12,
+    marginLeft: 6,
+  },
+  dateButton: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  dateText: {
+    fontSize: 16,
+    marginLeft: 8,
+  },
+  notesInput: {
+    height: 80,
+    textAlignVertical: "top",
+  },
+  modalButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginTop: 20,
+  },
+  modalButtonText: {
+    fontSize: 16,
+    color: "white",
+    fontWeight: "600",
+  },
+  scanArea: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 40,
+    backgroundColor: "transparent",
   },
 });
 
@@ -76,18 +440,21 @@ export const recipePageStyles = StyleSheet.create({
     paddingHorizontal: baseTheme.spacing.md,
     marginHorizontal: 4,
     borderRadius: baseTheme.borderRadius.sm,
+    borderWidth: 1,
+    borderColor: baseTheme.colors.primary,
     backgroundColor: "rgba(128, 128, 128, 0.1)",
   },
 
   tabText: {
     fontSize: baseTheme.typography.sizes.sm,
     marginLeft: 6,
-    opacity: 0.7,
+    fontWeight: baseTheme.typography.weights.medium,
   },
 
   activeTabText: {
     color: "white",
     opacity: 1,
+    fontWeight: baseTheme.typography.weights.bold,
   },
 
   recipesGrid: {

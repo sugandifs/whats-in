@@ -469,7 +469,7 @@ export default function CreateMealPage() {
                   title="Add"
                   onPress={addIngredient}
                   disabled={!currentIngredient.trim()}
-                  style={{ paddingHorizontal: 16 }}
+                  style={{ marginBottom: 14, paddingHorizontal: 16 }}
                 />
               </ThemedView>
 
@@ -538,6 +538,7 @@ export default function CreateMealPage() {
                   onPress={addInstruction}
                   disabled={!currentInstruction.trim()}
                   style={{
+                    marginBottom: 20,
                     paddingHorizontal: 16,
                     alignSelf: "flex-end",
                   }}
@@ -615,7 +616,7 @@ export default function CreateMealPage() {
                   title="Add"
                   onPress={addTag}
                   disabled={!currentTag.trim()}
-                  style={{ paddingHorizontal: 16 }}
+                  style={{ marginBottom: 14, paddingHorizontal: 16 }}
                 />
               </ThemedView>
 

@@ -1,10 +1,7 @@
-// Updated grocery.tsx with API integration
-
 import { FormInput } from "@/components/forms/FormInput";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { ActionButton } from "@/components/ui/ActionButton";
-import { EmptyState } from "@/components/ui/EmptyState";
 import { Header } from "@/components/ui/Header";
 import { HeaderAction } from "@/components/ui/HeaderActions";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
@@ -18,7 +15,7 @@ import {
   GroceryItem,
   QuickAddItem,
 } from "@/services/types";
-import { styles } from "@/styles";
+import { baseTheme, pantryPageStyles, styles } from "@/styles";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -29,6 +26,7 @@ import {
   ScrollView,
   StatusBar,
   TouchableOpacity,
+  useColorScheme,
   View,
 } from "react-native";
 
@@ -45,6 +43,7 @@ export default function GroceryListPage() {
   const router = useRouter();
   const { currentUser } = useAuth();
   const { themedColors, theme } = useThemedStyles();
+  const colorScheme = useColorScheme();
 
   // State management
   const [loading, setLoading] = useState(true);
@@ -109,7 +108,7 @@ export default function GroceryListPage() {
       id: "fresh",
       name: "Fresh Produce",
       emoji: "🥬",
-      color: "#22c55e",
+      color: themedColors.categories?.fresh || "#22c55e",
     },
     { id: "dairy", name: "Dairy", emoji: "🥛", color: "#3b82f6" },
     { id: "meat", name: "Meat & Fish", emoji: "🍗", color: "#ef4444" },
@@ -129,7 +128,12 @@ export default function GroceryListPage() {
       emoji: "🧽",
       color: "#6366f1",
     },
-    { id: "other", name: "Other", emoji: "🛒", color: "#6b7280" },
+    {
+      id: "other",
+      name: "Other",
+      emoji: "🛒",
+      color: themedColors.textSecondary,
+    },
   ];
 
   // Load grocery items from API
@@ -360,10 +364,10 @@ export default function GroceryListPage() {
           {
             flexDirection: "row",
             alignItems: "center",
-            paddingVertical: 12,
-            paddingHorizontal: 16,
-            marginBottom: 8,
-            borderRadius: 12,
+            paddingVertical: theme.spacing.md,
+            paddingHorizontal: theme.spacing.lg,
+            marginBottom: theme.spacing.sm,
+            borderRadius: theme.borderRadius.md,
             borderWidth: 1,
             borderColor: themedColors.border,
             backgroundColor: themedColors.backgroundSecondary,
@@ -392,7 +396,7 @@ export default function GroceryListPage() {
                 borderColor: item.isCompleted
                   ? themedColors.success
                   : themedColors.border,
-                marginRight: 12,
+                marginRight: theme.spacing.md,
                 alignItems: "center",
                 justifyContent: "center",
                 backgroundColor: item.isCompleted
@@ -406,7 +410,9 @@ export default function GroceryListPage() {
             )}
           </ThemedView>
 
-          <ThemedText style={{ fontSize: 24, marginRight: 12 }}>
+          <ThemedText
+            style={{ fontSize: 24, marginRight: theme.spacing.md }}
+          >
             {item.emoji}
           </ThemedText>
 
@@ -454,7 +460,7 @@ export default function GroceryListPage() {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={{ padding: 8 }}
+          style={{ padding: theme.spacing.sm }}
           onPress={() => removeItem(item._id)}
         >
           <Ionicons
@@ -472,12 +478,7 @@ export default function GroceryListPage() {
   }
 
   return (
-    <SafeAreaView
-      style={[
-        styles.container,
-        { backgroundColor: themedColors.background },
-      ]}
-    >
+    <SafeAreaView style={styles.container}>
       <StatusBar
         barStyle={
           themedColors.text === "#1A1A21"
@@ -498,99 +499,46 @@ export default function GroceryListPage() {
         }
       />
 
-      {/* Stats */}
-      <ThemedView
-        style={{
-          flexDirection: "row",
-          paddingHorizontal: 16,
-          paddingVertical: 16,
-          gap: 12,
-          backgroundColor: "transparent",
-        }}
-      >
-        <ThemedView
-          style={[
-            {
-              flex: 1,
-              alignItems: "center",
-              paddingVertical: 12,
-              borderRadius: 12,
-              borderWidth: 1,
-              borderColor: themedColors.border,
-              backgroundColor: themedColors.backgroundSecondary,
-            },
-          ]}
-        >
+      <ThemedView style={pantryPageStyles.statsContainer}>
+        <ThemedView style={pantryPageStyles.statCard}>
           <ThemedText
-            style={{
-              fontSize: 18,
-              fontWeight: "bold",
-              color: themedColors.primary,
-            }}
+            type="default"
+            style={[
+              styles.statNumber,
+              { color: baseTheme.colors.primary },
+            ]}
           >
             {pendingItems.length}
           </ThemedText>
-          <ThemedText
-            style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}
-          >
+          <ThemedText type="default" style={pantryPageStyles.statLabel}>
             Pending
           </ThemedText>
         </ThemedView>
-
-        <ThemedView
-          style={[
-            {
-              flex: 1,
-              alignItems: "center",
-              paddingVertical: 12,
-              borderRadius: 12,
-              borderWidth: 1,
-              borderColor: themedColors.border,
-              backgroundColor: themedColors.backgroundSecondary,
-            },
-          ]}
-        >
+        <ThemedView style={pantryPageStyles.statCard}>
           <ThemedText
-            style={{
-              fontSize: 18,
-              fontWeight: "bold",
-              color: themedColors.success,
-            }}
+            type="default"
+            style={[
+              pantryPageStyles.statNumber,
+              { color: baseTheme.colors.success },
+            ]}
           >
             {completedItems.length}
           </ThemedText>
-          <ThemedText
-            style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}
-          >
+          <ThemedText type="default" style={pantryPageStyles.statLabel}>
             Completed
           </ThemedText>
         </ThemedView>
-
-        <ThemedView
-          style={[
-            {
-              flex: 1,
-              alignItems: "center",
-              paddingVertical: 12,
-              borderRadius: 12,
-              borderWidth: 1,
-              borderColor: themedColors.border,
-              backgroundColor: themedColors.backgroundSecondary,
-            },
-          ]}
-        >
+        <ThemedView style={pantryPageStyles.statCard}>
           <ThemedText
-            style={{
-              fontSize: 18,
-              fontWeight: "bold",
-              color: themedColors.primary,
-            }}
+            type="default"
+            style={[
+              pantryPageStyles.statNumber,
+              { color: baseTheme.colors.primary },
+            ]}
           >
             {groceryList.length}
           </ThemedText>
-          <ThemedText
-            style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}
-          >
+          <ThemedText type="default" style={pantryPageStyles.statLabel}>
             Total
           </ThemedText>
         </ThemedView>
@@ -599,8 +547,8 @@ export default function GroceryListPage() {
       {/* Add Item Button */}
       <ThemedView
         style={{
-          paddingHorizontal: 16,
-          paddingBottom: 16,
+          paddingHorizontal: theme.spacing.lg,
+          paddingBottom: theme.spacing.lg,
           backgroundColor: "transparent",
         }}
       >
@@ -614,8 +562,8 @@ export default function GroceryListPage() {
       {/* Search Bar */}
       <ThemedView
         style={{
-          paddingHorizontal: 16,
-          paddingBottom: 16,
+          paddingHorizontal: theme.spacing.lg,
+          paddingBottom: theme.spacing.lg,
           backgroundColor: "transparent",
         }}
       >
@@ -640,14 +588,14 @@ export default function GroceryListPage() {
         {/* Quick Add */}
         <ThemedView
           style={{
-            paddingHorizontal: 16,
-            paddingBottom: 24,
+            paddingHorizontal: theme.spacing.lg,
+            paddingBottom: theme.spacing.xl,
             backgroundColor: "transparent",
           }}
         >
           <ThemedText
             type="subtitle"
-            style={{ fontSize: 18, marginBottom: 16 }}
+            style={{ fontSize: 18, marginBottom: theme.spacing.lg }}
           >
             Quick Add
           </ThemedText>
@@ -665,9 +613,9 @@ export default function GroceryListPage() {
                 style={{
                   width: "23%",
                   alignItems: "center",
-                  paddingVertical: 12,
-                  marginBottom: 12,
-                  borderRadius: 8,
+                  paddingVertical: theme.spacing.md,
+                  marginBottom: theme.spacing.md,
+                  borderRadius: theme.borderRadius.sm,
                   borderWidth: 1,
                   borderColor: themedColors.border,
                   backgroundColor: themedColors.backgroundTertiary,
@@ -690,7 +638,7 @@ export default function GroceryListPage() {
         {/* Grocery Items */}
         <ThemedView
           style={{
-            paddingHorizontal: 16,
+            paddingHorizontal: theme.spacing.lg,
             paddingBottom: 100,
             backgroundColor: "transparent",
           }}
@@ -699,13 +647,13 @@ export default function GroceryListPage() {
           {pendingItems.length > 0 && (
             <ThemedView
               style={{
-                marginBottom: 24,
+                marginBottom: theme.spacing.xl,
                 backgroundColor: "transparent",
               }}
             >
               <ThemedText
                 type="subtitle"
-                style={{ fontSize: 16, marginBottom: 12 }}
+                style={{ fontSize: 16, marginBottom: theme.spacing.md }}
               >
                 To Buy ({pendingItems.length})
               </ThemedText>
@@ -717,13 +665,17 @@ export default function GroceryListPage() {
           {showCompleted && completedItems.length > 0 && (
             <ThemedView
               style={{
-                marginBottom: 24,
+                marginBottom: theme.spacing.xl,
                 backgroundColor: "transparent",
               }}
             >
               <ThemedText
                 type="subtitle"
-                style={{ fontSize: 16, marginBottom: 12, opacity: 0.7 }}
+                style={{
+                  fontSize: 16,
+                  marginBottom: theme.spacing.md,
+                  opacity: 0.7,
+                }}
               >
                 Completed ({completedItems.length})
               </ThemedText>
@@ -733,17 +685,31 @@ export default function GroceryListPage() {
 
           {/* Empty State */}
           {filteredItems.length === 0 && (
-            <EmptyState
-              icon="cart-outline"
-              title={
-                searchQuery ? "No items found" : "Your list is empty"
-              }
-              subtitle={
-                searchQuery
-                  ? "Try a different search term"
-                  : "Add items to get started"
-              }
-            />
+            <ThemedView style={pantryPageStyles.emptyState}>
+              <Ionicons
+                name={"cart" as IoniconsName}
+                size={48}
+                color={colorScheme === "dark" ? "#666" : "#ccc"}
+              />
+              <ThemedText style={pantryPageStyles.emptyText}>
+                {searchQuery
+                  ? "No items match your search"
+                  : "Your grocery list is empty"}
+              </ThemedText>
+              <TouchableOpacity
+                onPress={() => {
+                  if (searchQuery) {
+                    setSearchQuery("");
+                  } else {
+                    setAddItemModalVisible(true);
+                  }
+                }}
+              >
+                <ThemedText type="link">
+                  {searchQuery ? "Clear search" : "Add your first item"}
+                </ThemedText>
+              </TouchableOpacity>
+            </ThemedView>
           )}
         </ThemedView>
       </ScrollView>
@@ -766,7 +732,7 @@ export default function GroceryListPage() {
           />
 
           {/* Quantity and Unit */}
-          <View style={{ flexDirection: "row", gap: 12 }}>
+          <View style={{ flexDirection: "row", gap: theme.spacing.md }}>
             <FormInput
               label="Quantity"
               placeholder="1"
@@ -794,7 +760,7 @@ export default function GroceryListPage() {
               categories.find((cat) => cat.id === newItem.category)
                 ?.name || "Other"
             }
-            containerStyle={{ marginBottom: 16 }}
+            containerStyle={{ marginBottom: theme.spacing.lg }}
           />
 
           {/* Notes */}
@@ -814,7 +780,7 @@ export default function GroceryListPage() {
             icon="add"
             onPress={addNewItem}
             disabled={!newItem.name.trim()}
-            style={{ marginTop: 20 }}
+            style={{ marginTop: theme.spacing.lg }}
           />
         </ScrollView>
       </Modal>

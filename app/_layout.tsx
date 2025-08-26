@@ -1,7 +1,7 @@
 import {
   DarkTheme,
   DefaultTheme,
-  ThemeProvider,
+  ThemeProvider as NavigationThemeProvider,
 } from "@react-navigation/native";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
@@ -10,6 +10,7 @@ import "react-native-reanimated";
 
 import { Colors } from "@/constants/Colors";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { ThemeProvider } from "@/context/ThemeContext";
 import { useColorScheme } from "@/hooks/useColorScheme";
 import LoginSignupPage from "./login";
 
@@ -55,16 +56,16 @@ function RootLayoutNav() {
   // If no user is authenticated, show login page
   if (!currentUser) {
     return (
-      <ThemeProvider value={currentTheme}>
+      <NavigationThemeProvider value={currentTheme}>
         <LoginSignupPage />
         <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
-      </ThemeProvider>
+      </NavigationThemeProvider>
     );
   }
 
   // If user is authenticated, show the main app with tabs
   return (
-    <ThemeProvider value={currentTheme}>
+    <NavigationThemeProvider value={currentTheme}>
       <Stack
         screenOptions={{
           headerShown: false,
@@ -78,7 +79,7 @@ function RootLayoutNav() {
         <Stack.Screen name="+not-found" />
       </Stack>
       <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
-    </ThemeProvider>
+    </NavigationThemeProvider>
   );
 }
 
@@ -86,7 +87,6 @@ export default function RootLayout() {
   const [loaded] = useFonts({
     SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
   });
-  const colorScheme = useColorScheme();
 
   if (!loaded) {
     // Async font loading only occurs in development.
@@ -94,8 +94,10 @@ export default function RootLayout() {
   }
 
   return (
-    <AuthProvider>
-      <RootLayoutNav />
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <RootLayoutNav />
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

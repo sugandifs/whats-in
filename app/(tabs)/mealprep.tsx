@@ -2,6 +2,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { ActionButton } from "@/components/ui/ActionButton";
 import { Header } from "@/components/ui/Header";
+import { HeaderAction } from "@/components/ui/HeaderActions";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { Modal } from "@/components/ui/Modal";
 import { useAuth } from "@/context/AuthContext";
@@ -137,23 +138,8 @@ export default function MealPlannerPage() {
         ),
       ]);
 
-      console.log(
-        "Week range:",
-        currentWeek.startDate,
-        "to",
-        currentWeek.endDate
-      );
-      console.log(
-        "API returned plans with dates:",
-        mealPlans.map((p) => p.date)
-      );
-
       // Create complete week structure
       const weekDays = generateWeekDays(currentWeek.startDate);
-      console.log(
-        "Expected dates:",
-        weekDays.map((d) => d.date)
-      );
 
       const completeWeekPlans = weekDays.map((day) => {
         const existingPlan = mealPlans.find((plan) => {
@@ -211,6 +197,7 @@ export default function MealPlannerPage() {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadWeekData();
+    await loadMealSuggestions();
     setRefreshing(false);
   }, [currentWeek]);
 
@@ -605,16 +592,7 @@ export default function MealPlannerPage() {
         title="Meal Planner"
         subtitle="Plan your week ahead"
         rightActions={
-          <TouchableOpacity
-            style={{ padding: 8 }}
-            onPress={() => console.log("Calendar action")}
-          >
-            <Ionicons
-              name="calendar"
-              size={24}
-              color={themedColors.primary}
-            />
-          </TouchableOpacity>
+          <HeaderAction icon="calendar" onPress={() => null} />
         }
       />
 
