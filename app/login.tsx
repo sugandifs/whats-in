@@ -1,5 +1,6 @@
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
+import { Colors } from "@/constants/Colors";
 import { useAuth } from "@/context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
@@ -33,8 +34,9 @@ export default function LoginSignupPage() {
     lastName: "",
     agreeToTerms: false,
   });
-  const colorScheme = useColorScheme();
   const { signup, login } = useAuth();
+  const colorScheme = useColorScheme();
+  const themedColors = Colors[colorScheme ?? "light"];
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -226,7 +228,12 @@ export default function LoginSignupPage() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView
+      style={[
+        styles.container,
+        { backgroundColor: themedColors.background },
+      ]}
+    >
       <StatusBar
         barStyle={
           colorScheme === "dark" ? "light-content" : "dark-content"
@@ -240,7 +247,10 @@ export default function LoginSignupPage() {
         <ScrollView
           style={styles.scrollView}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { backgroundColor: themedColors.background },
+          ]}
           keyboardShouldPersistTaps="handled"
         >
           {/* Header */}
