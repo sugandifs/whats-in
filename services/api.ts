@@ -18,7 +18,7 @@ import {
 
 const API_BASE_URL = __DEV__
   ? "http://localhost:3000/api"
-  : "whats-in-server.vercel.app/api";
+  : "https://whats-in-server.vercel.app/api";
 
 class ApiService {
   private async getAuthToken(): Promise<string> {
